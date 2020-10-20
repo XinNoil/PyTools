@@ -10,34 +10,27 @@ def get_text_stream(filename, zip_archive):
     if filename not in zip_archive.namelist():
         filename = '/%s'%filename
     csvbytes = zip_archive.read(filename).splitlines()
-    csvstr = [str(line)[2:-1] for line in csvbytes]
-    csvstr = '\n'.join(csvstr)
-    text_stream = StringIO(csvstr)
-    return text_stream
+    csvstr = [str.split(str(line)[2:-1],',') for line in csvbytes]
+    return csvstr
 
-def update_reader_bssids(reader, threshold):
-    bssids=[]
-    max_rssis=[]
+def update_reader_bssids(reader, bssids, max_rssis):
     for row in reader:
-        if (row[1] not in bssids) & (int(row[2])>=threshold):
+        if (row[1] not in bssids):
             bssids.append(row[1])
             max_rssis.append(int(row[2]))
         elif row[1] in bssids:
             if int(row[2])>max_rssis[bssids.index(row[1])]:
                 max_rssis[bssids.index(row[1])]=int(row[2])
-    bssids.sort()
-    return bssids
+    return bssids, max_rssis
 
-def get_bssids(filename, zip_name=None, threshold=-80):
-    if zip_name:
-        with zipfile.ZipFile(zip_name, 'r') as zip_archive:
-            reader = csv.reader(get_text_stream(filename, zip_archive))
-            bssids = update_reader_bssids(reader, threshold)
+def get_bssids(filename, zipfilename=None, bssids=[], max_rssis=[]):
+    if zipfilename:
+        with zipfile.ZipFile(zipfilename, 'r') as zip_archive:
+            bssids, max_rssis=update_reader_bssids(get_text_stream(filename, zip_archive), bssids, max_rssis)
     else:
         with open(filename, 'r', encoding='utf-8', errors='ignore') as f:
-            reader = csv.reader(f)
-            bssids = update_reader_bssids(reader, threshold)
-    return bssids
+            bssids, max_rssis=update_reader_bssids(csv.reader(f), bssids, max_rssis)
+    return bssids, max_rssis
 
 def loadWiFiData(reader, bssids):
     recordno = 0
@@ -61,8 +54,7 @@ class WiFiData(object):
 def process_rssis(filename, bssids, zip_name=[]):
     if zip_name:
         with zipfile.ZipFile(zip_name, 'r') as zip_archive:
-            reader=csv.reader(get_text_stream(filename, zip_archive))
-            return loadWiFiData(reader, bssids)
+            return loadWiFiData(get_text_stream(filename, zip_archive), bssids)
     else:
         with open(filename, 'r', encoding='utf-8', errors='ignore') as f:
             reader=csv.reader(f)
@@ -73,5 +65,7 @@ def set_bssids(rssis, bssids, bssids_new):
     inter_index_self = [bssids.index(bssid)     for bssid in inter_bssids]
     inter_index_new  = [bssids_new.index(bssid) for bssid in inter_bssids]
     rssis_new = np.zeros((rssis.shape[0], len(bssids_new)))
+    if np.max(rssis)<0:
+        rssis_new = rssis_new-100
     rssis_new[:, inter_index_new] = rssis[:, inter_index_self]
     return rssis_new

@@ -1,13 +1,14 @@
 import csv,json,h5py,os,time
 import scipy.io
 import numpy as np
+from itertools import compress
 
 # lists
 def list_find(l):
     return [i for i, x in enumerate(l) if x]
 
 def list_mask(l, m):
-    return [i for i,r in zip(l,m) if r]
+    return list(compress(l, m))
 
 # numpys
 def str2np(s):
