@@ -71,6 +71,9 @@ class DB(object):
     def bssids_list_name(self):
         return os.path.join(self.pre_path(), '%s_%s_bssids_list.json'%(self.data_name, self.dbtype))
     
+    def max_rssis_list_name(self):
+        return os.path.join(self.pre_path(), '%s_%s_max_rssis_list.json'%(self.data_name, self.dbtype))
+    
     def bssids_name(self):
         return os.path.join(self.pre_path(), '%s_bssids.json'%(self.data_name))
         
@@ -81,14 +84,15 @@ class DB(object):
         save_h5(self.save_name(avg), self)
     
     def process_wifi(self, bssids, avg):
-        if os.path.exists(self.bssids_list_name()):
+        if os.path.exists(self.bssids_list_name()) & os.path.exists(self.max_rssis_list_name()):
             bssids_list = load_json(self.bssids_list_name())
+            max_rssis_list = load_json(self.max_rssis_list_name())
         else:
             bssids_results = [get_bssids(filename, self.zip_name(), [], []) for filename in self.wfiles]
-            # bssids_results = [get_bssids(filename, self.zip_name()) for filename in self.wfiles]
             bssids_list = [bssids for bssids, max_rssis in bssids_results]
             max_rssis_list = [max_rssis for bssids, max_rssis in bssids_results]
             save_json(self.bssids_list_name(), bssids_list)
+            save_json(self.max_rssis_list_name(), max_rssis_list)
         if bssids:
             self.bssids = bssids
         elif os.path.exists(self.bssids_name()):
@@ -98,7 +102,7 @@ class DB(object):
             max_rssis = [max_rssi for max_rssis in max_rssis_list for max_rssi in max_rssis]
             bssids = list(set(list_mask(bssids, [max_rssi>=-80 for max_rssi in max_rssis])))
             bssids.sort()
-            print('bssids size: '%len(bssids))
+            print('bssids size: %d'%len(bssids))
             self.bssids = bssids
             save_json(self.bssids_name(), self.bssids)
         self.process_rssis_all(avg, bssids_list)
