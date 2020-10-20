@@ -142,12 +142,12 @@ class DB(object):
     
     def set_mask(self, mask):
         for k,v in zip(self.__dict__.keys(), self.__dict__.values()):
-            if type(mask[0])==bool or type(mask[0])==np.bool_:
-                if (type(v)==list)&(type(v[0])==str)&(len(v)==len(self)):
+            if (type(mask[0])==bool or type(mask[0])==np.bool_) & (len(v)==len(self)):
+                if (type(v)==list)&(type(v[0])==str):
                     self.__dict__[k]=list_mask(v, mask)
                 elif type(v)==np.ndarray:
                     self.__dict__[k]=v[mask]
-            else:
+            elif len(v)==len(self):
                 self.__dict__[k]=v[mask]
     
     def set_bssids(self, bssids):
