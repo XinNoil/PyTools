@@ -151,6 +151,17 @@ class DB(object):
         if self.cdns.shape[0]!=cdns.shape[0]:
             return False
         return not np.any(np.abs(self.cdns-cdns)>0.01)
+    
+    def get_feature(self, feature_mode='R'):
+        if feature_mode == 'R':
+            return self.rssis
+        elif feature_mode is 'MM' :
+            return self.mags
+        elif feature_mode is 'RMM' :
+            return np.hstack((self.mags, self.rssis))
+    
+    def get_label(self, label_mode):
+        return self.cdns
 
 def get_filenames(folderlist, filenumlist, prefix):
     filenames = []

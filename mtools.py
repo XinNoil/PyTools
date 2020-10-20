@@ -31,6 +31,11 @@ def np_avg(arr, r):
     arrs = np.split(arr, r.cumsum()[:-1])
     return np.array([np.mean(x, 0) for x in arrs])
 
+def np_union_shuffle(a, b):
+    assert len(a) == len(b)
+    p = np.random.permutation(len(a))
+    return a[p], b[p]
+
 # IO: json, h5, csv, mat
 def tojson(o):
     return json.dumps(o, default=lambda obj: obj.__dict__, sort_keys=True)
