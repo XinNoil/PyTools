@@ -10,10 +10,10 @@ class DB(object):
         self.data_name = data_name
         self.dbtype = dbtype
         print(data_name)
-        if os.path.exists(self.save_name()):
+        if os.path.exists(self.save_name(avg)):
             source = 'h5'
             print('%s is using %s file'%(dbtype, source))
-            self.__dict__ = load_h5(self.save_name())
+            self.__dict__ = load_h5(self.save_name(avg))
         elif os.path.exists(self.csv_name()):
             source = 'csv'
             print('%s is using %s file'%(dbtype, source))
@@ -21,27 +21,31 @@ class DB(object):
         elif os.path.exists(self.zip_name()):
             source = 'zip'
             print('%s is using %s file'%(dbtype, source))
-            self.cdns = cdns
+            self.cdns = np.array(cdns)
             self.wfiles = wfiles
-            self.process_data()        
+            self.process_data(avg)
     
     def load_csv(self, avg):
         desc = load_json(os.path.join(self.data_path, '%s_data_description.json'%self.data_name))
-        r = np.array(desc['RecordsNums'])
         self.bssids = load_json(os.path.join(self.data_path, '%s_bssids.json'%self.data_name))
         data = csvread(self.csv_name())
+        self.cdns  = np.round(data[:, 0: desc['cdn_dim']]+np.array(desc['cdn_min']), 4)
+        self.mags  = data[:, desc['cdn_dim']:desc['cdn_dim']+desc['mag_dim']]
+        self.rssis = data[:, desc['cdn_dim']+desc['mag_dim']:desc['cdn_dim']+desc['mag_dim']+desc['rssi_dim']]
         if avg:
-            if np.sum(r) != data.shape[0]:
-                raise Exception('Sum of RecordsNums %d is not equal with data length %d' % (np.sum(r), data.shape[0]))
-            self.cdns  = np.round(np_avg(data[:, 0: desc['cdn_dim']]+np.array(desc['cdn_min']), r), 3)
-            self.mags  = np_avg(data[:, desc['cdn_dim']:desc['cdn_dim']+desc['mag_dim']], r)
-            self.rssis = np_avg(data[:, desc['cdn_dim']+desc['mag_dim']:desc['cdn_dim']+desc['mag_dim']+desc['rssi_dim']], r)
+            self.RecordsNums = np.array(desc['RecordsNums'])
+            self.avg()
         else:
-            self.cdns  = np.round(data[:, 0: desc['cdn_dim']]+np.array(desc['cdn_min']), 3)
-            self.mags  = data[:, desc['cdn_dim']:desc['cdn_dim']+desc['mag_dim']]
-            self.rssis = data[:, desc['cdn_dim']+desc['mag_dim']:desc['cdn_dim']+desc['mag_dim']+desc['rssi_dim']]
-        save_h5(self.save_name(), self)
+            self.RecordsNums = np.ones(self.rssis.shape[0])
+        save_h5(self.save_name(avg), self)
     
+    def avg(self):
+        if np.sum(self.RecordsNums) != self.cdns.shape[0]:
+            raise Exception('Sum of RecordsNums %d is not equal with data length %d' % (np.sum(self.RecordsNums), self.cdns.shape[0]))
+        self.cdns  = np_avg(self.cdns, self.RecordsNums)
+        self.mags  = np_avg(self.mags, self.RecordsNums)
+        self.rssis = np_avg(self.rssis, self.RecordsNums)
+
     def filename(self, postfix=None, ext=None):
         filename = self.data_name
         if postfix:
@@ -56,8 +60,8 @@ class DB(object):
     def zip_name(self):
         return self.filename(ext='zip')
     
-    def save_name(self):
-        return self.filename(postfix=self.dbtype, ext='h5')
+    def save_name(self, avg):
+        return self.filename(postfix=self.dbtype+'_avg', ext='h5') if avg else self.filename(postfix=self.dbtype, ext='h5')
     
     def csv_name(self):
         return self.filename(postfix=self.dbtype, ext='csv')
@@ -71,13 +75,13 @@ class DB(object):
     def bssids_name(self):
         return self.filename(postfix='bssids', ext='json')
         
-    def process_data(self, db=None):
+    def process_data(self, avg, db=None):
         if not os.path.exists(self.pre_path()):
             os.mkdir(self.pre_path())
-        self.process_wifi(db)
-        save_h5(self.save_name(), self)
+        self.process_wifi(avg, db)
+        save_h5(self.save_name(avg), self)
     
-    def process_wifi(self, db=None):
+    def process_wifi(self, avg, db=None):
         if os.path.exists(self.bssids_list_name()):
             bssids_list = load_json(self.bssids_list_name())
         else:
@@ -92,18 +96,30 @@ class DB(object):
             bssids.sort()
             self.bssids = bssids
             save_json(self.bssids_name(), self.bssids)
-        self.process_rssis_all(bssids_list)
+        self.process_rssis_all(avg, bssids_list)
 
-    def process_rssis_all(self, bssids_list):
+    def process_rssis_all(self, avg, bssids_list):
         self.rssis = []
+        if not avg:
+            self.RecordsNums = []
         for filename,bssids in zip(self.wfiles, bssids_list):
             if os.path.exists(self.prefilename(filename)):
                 wiFiData = self.load_prefile(filename)
             else:
                 wiFiData = process_rssis(filename, bssids, self.zip_name())
                 save_h5(self.prefilename(filename), wiFiData)
-            self.rssis.append(np.mean(set_bssids(wiFiData.rssis, bssids, self.bssids), axis=0))
-        self.rssis = np.array(self.rssis)
+            rssis = set_bssids(wiFiData.rssis, bssids, self.bssids)
+            rssis = np.array([np.mean(x, 0) for x in np.array_split(rssis, np.floor(len(rssis)/5.0), axis=0)])
+            if avg:
+                self.rssis.append(np.mean(rssis, axis=0))
+            else:
+                self.rssis.append(rssis)
+                self.RecordsNums.append(len(rssis))
+        self.rssis = np.vstack(self.rssis)
+        if avg:
+            self.RecordsNums = np.array(self.RecordsNums)
+        else:
+            self.RecordsNums = np.ones(self.rssis.shape[0])
     
     def load_prefile(self, filename):
         wiFiData = WiFiData()
@@ -113,12 +129,10 @@ class DB(object):
     def set_mask(self, mask):
         for k,v in zip(self.__dict__.keys(), self.__dict__.values()):
             if len(v)==len(mask):
-                if (type(v)==list)&(type(v[0])==str):
-                    # print('set mask to %s' % k)
+                if (type(v)==list)&(type(v[0])==str)&(len(v)==np.sum(self.RecordsNums)):
                     self.__dict__[k]=list(compress(v, mask))
                 elif type(v)==np.ndarray:
-                    # print('set mask to %s' % k)
-                    self.__dict__[k]=v[mask, :]
+                    self.__dict__[k]=v[mask]
     
     def set_bssids(self, bssids):
         inter_bssids = set(self.bssids).intersection(set(bssids))
@@ -132,7 +146,7 @@ class DB(object):
     def is_cdns_equal(self, cdns):
         if self.cdns.shape[0]!=cdns.shape[0]:
             return False
-        return not np.any(self.cdns-cdns)
+        return not np.any(np.abs(self.cdns-cdns)>0.01)
 
 def get_filenames(folderlist, filenumlist, prefix):
     filenames = []
@@ -143,7 +157,9 @@ def get_filenames(folderlist, filenumlist, prefix):
 
 def reduce_dbs(db1, db2):
     if not db1.is_cdns_equal(db2.cdns):
-        print('reduce %s_%s, %s_%s' %(db1.data_name, db2.dbtype, db2.data_name, db2.dbtype))
+        print('reduce_dbs(%s_%s, %s_%s): reduce' %(db1.data_name, db2.dbtype, db2.data_name, db2.dbtype))
         ia, ib = np_intersect(db1.cdns, db2.cdns)
         db1.set_mask(ia)
         db2.set_mask(ib)
+    else:
+        print('reduce_dbs(%s_%s, %s_%s): equal' %(db1.data_name, db2.dbtype, db2.data_name, db2.dbtype))
