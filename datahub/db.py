@@ -23,7 +23,11 @@ class DB(object):
             self.cdns = np.array(cdns)
             self.wfiles = wfiles
             self.process_data(bssids, avg)
-    
+        print('len: %d'%len(self))
+
+    def __len__(self):
+        return self.rssis.shape[0]
+
     def load_csv(self, avg):
         desc = load_json(os.path.join(self.data_path, '%s_data_description.json'%self.data_name))
         self.bssids = load_json(os.path.join(self.data_path, '%s_bssids.json'%self.data_name))
@@ -41,9 +45,10 @@ class DB(object):
     def avg(self):
         if np.sum(self.RecordsNums) != self.cdns.shape[0]:
             raise Exception('Sum of RecordsNums %d is not equal with data length %d' % (np.sum(self.RecordsNums), self.cdns.shape[0]))
-        self.cdns  = np_avg(self.cdns, self.RecordsNums)
+        self.cdns  = np.round(np_avg(self.cdns, self.RecordsNums), 4)
         self.mags  = np_avg(self.mags, self.RecordsNums)
         self.rssis = np_avg(self.rssis, self.RecordsNums)
+        self.RecordsNums = np.ones(len(self))
 
     def filename(self, postfix=None, ext=None):
         filename = self.data_name
@@ -126,7 +131,7 @@ class DB(object):
                 self.RecordsNums.append(len(rssis))
         self.rssis = np.vstack(self.rssis)
         if avg:
-            self.RecordsNums = np.ones(self.rssis.shape[0])
+            self.RecordsNums = np.ones(len(self))
         else:
             self.RecordsNums = np.array(self.RecordsNums)
     
@@ -137,11 +142,13 @@ class DB(object):
     
     def set_mask(self, mask):
         for k,v in zip(self.__dict__.keys(), self.__dict__.values()):
-            if len(v)==len(mask):
-                if (type(v)==list)&(type(v[0])==str)&(len(v)==np.sum(self.RecordsNums)):
+            if type(mask[0])==bool or type(mask[0])==np.bool_:
+                if (type(v)==list)&(type(v[0])==str)&(len(v)==len(self)):
                     self.__dict__[k]=list_mask(v, mask)
                 elif type(v)==np.ndarray:
                     self.__dict__[k]=v[mask]
+            else:
+                self.__dict__[k]=v[mask]
     
     def set_bssids(self, bssids):
         self.rssis = set_bssids(self.rssis, self.bssids, bssids)
@@ -151,6 +158,12 @@ class DB(object):
         if self.cdns.shape[0]!=cdns.shape[0]:
             return False
         return not np.any(np.abs(self.cdns-cdns)>0.01)
+    
+    def shuffle(self):
+        p = np.random.permutation(len(self))
+        for k,v in zip(self.__dict__.keys(), self.__dict__.values()):
+            if len(v)==len(self):
+                self.__dict__[k]=v[p]
 
 def get_filenames(folderlist, filenumlist, prefix):
     filenames = []
@@ -161,8 +174,8 @@ def get_filenames(folderlist, filenumlist, prefix):
 
 def reduce_dbs(db1, db2):
     if not db1.is_cdns_equal(db2.cdns):
-        print('reduce_dbs(%s_%s, %s_%s): reduce' %(db1.data_name, db2.dbtype, db2.data_name, db2.dbtype))
-        ia, ib = np_intersect(db1.cdns, db2.cdns)
+        ia, ib = np_intersect(np.round(db1.cdns, 3), np.round(db2.cdns, 3))
+        print('reduce_dbs(%s_%s, %s_%s): reduce %d,%d to %d,%d' %(db1.data_name, db2.dbtype, db2.data_name, db2.dbtype, len(db1), len(db2), np.sum(ia), np.sum(ib)))
         db1.set_mask(ia)
         db2.set_mask(ib)
     else:
