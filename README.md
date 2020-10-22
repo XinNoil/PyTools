@@ -24,7 +24,7 @@ from datahub.db import DB
 
 Tools including **io, numpy and built-in functions**.
 
-Since we `import *` in `mtools.__init.py`, you can import any function `func`  by :
+Since we `import *` in `mtools.__init__.py`, you can import any function `func`  by :
 
 ```python
 from mtools import func
