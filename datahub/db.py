@@ -4,7 +4,7 @@ from datahub.wifi import get_bssids, process_rssis, WiFiData, set_bssids
 from mtools import list_mask,load_h5,save_h5,load_json,save_json,csvread,np_avg,np_intersect
 
 class DB(object):
-    def __init__(self, data_path, data_name, dbtype='db', cdns=[], wfiles=[], avg=False, bssids=[]):
+    def __init__(self, data_path, data_name, dbtype='db', cdns=[], wfiles=[], avg=False, bssids=[], save_h5_file=False, event=False):
         self.data_path = data_path
         self.data_name = data_name
         self.dbtype = dbtype
@@ -22,7 +22,7 @@ class DB(object):
             print('%s is using %s file'%(dbtype, source))
             self.cdns = np.array(cdns)
             self.wfiles = wfiles
-            self.process_data(bssids, avg)
+            self.process_data(bssids, avg, save_h5_file, event)
         print('len: %d'%len(self))
 
     def __len__(self):
@@ -80,15 +80,15 @@ class DB(object):
         return os.path.join(self.pre_path(), '%s_%s_max_rssis_list.json'%(self.data_name, self.dbtype))
     
     def bssids_name(self):
-        return os.path.join(self.pre_path(), '%s_bssids.json'%(self.data_name))
+        return os.path.join(self.pre_path(), '%s_%s_bssids.json'%(self.data_name, self.dbtype))
         
-    def process_data(self, bssids, avg):
+    def process_data(self, bssids, avg, save_h5_file, event):
         if not os.path.exists(self.pre_path()):
             os.mkdir(self.pre_path())
-        self.process_wifi(bssids, avg)
+        self.process_wifi(bssids, avg, save_h5_file, event)
         save_h5(self.save_name(avg), self)
     
-    def process_wifi(self, bssids, avg):
+    def process_wifi(self, bssids, avg, save_h5_file, event):
         if os.path.exists(self.bssids_list_name()) & os.path.exists(self.max_rssis_list_name()):
             bssids_list = load_json(self.bssids_list_name())
             max_rssis_list = load_json(self.max_rssis_list_name())
@@ -110,9 +110,9 @@ class DB(object):
             print('bssids size: %d'%len(bssids))
             self.bssids = bssids
             save_json(self.bssids_name(), self.bssids)
-        self.process_rssis_all(avg, bssids_list)
+        self.process_rssis_all(avg, bssids_list, save_h5_file, event)
 
-    def process_rssis_all(self, avg, bssids_list):
+    def process_rssis_all(self, avg, bssids_list, save_h5_file, event):
         self.rssis = []
         if not avg:
             self.RecordsNums = []
@@ -120,15 +120,18 @@ class DB(object):
             if os.path.exists(self.prefilename(filename)):
                 wiFiData = self.load_prefile(filename)
             else:
-                wiFiData = process_rssis(filename, bssids, self.zip_name())
-                # save_h5(self.prefilename(filename), wiFiData)
+                wiFiData = process_rssis(filename, bssids, self.zip_name(), event)
+                if save_h5_file:
+                    save_h5(self.prefilename(filename), wiFiData)
             rssis = set_bssids(wiFiData.rssis, bssids, self.bssids)
-            rssis = np.array([np.mean(x, 0) for x in np.array_split(rssis, np.floor(len(rssis)/5.0), axis=0)])
+            if not event:
+                rssis = np.array([np.mean(x, 0) for x in np.array_split(rssis, np.floor(len(rssis)/5.0), axis=0)])
             if avg:
                 self.rssis.append(np.mean(rssis, axis=0))
             else:
                 self.rssis.append(rssis)
                 self.RecordsNums.append(len(rssis))
+
         self.rssis = np.vstack(self.rssis)
         if avg:
             self.RecordsNums = np.ones(len(self))
