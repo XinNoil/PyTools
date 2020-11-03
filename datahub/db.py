@@ -191,3 +191,8 @@ def reduce_dbs(db1, db2):
         db2.set_mask(ib)
     else:
         print('reduce_dbs(%s_%s, %s_%s): equal' %(db1.data_name, db2.dbtype, db2.data_name, db2.dbtype))
+
+class Setting(object):
+    def __init__(self, cdns, wfiles): 
+        self.cdns = cdns
+        self.wfiles = wfiles
