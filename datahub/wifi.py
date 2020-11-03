@@ -3,7 +3,7 @@ import numpy as np
 import itertools
 from more_itertools import chunked
 from io import StringIO
-from mtools import csvwrite
+from mtools import csvwrite,load_h5
 
 def get_text_stream(filename, zip_archive):
     filename = filename.replace('\\','/')
@@ -32,7 +32,7 @@ def get_bssids(filename, zipfilename=None, bssids=[], max_rssis=[]):
             bssids, max_rssis=update_reader_bssids(csv.reader(f), bssids, max_rssis)
     return bssids, max_rssis
 
-def loadWiFiData(reader, bssids):
+def loadWiFiData(reader, bssids, event):
     recordno = 0
     rssi = [-100]*len(bssids)
     rssis = []
@@ -47,18 +47,21 @@ def loadWiFiData(reader, bssids):
     return WiFiData(bssids, np.array(rssis).astype(float))
 
 class WiFiData(object):
-    def __init__(self, bssids=None, rssis=None):
-        self.bssids = bssids
-        self.rssis  = rssis
+    def __init__(self, bssids=None, rssis=None, filename=None):
+        if filename:
+            self.__dict__ = load_h5(filename)
+        else:
+            self.bssids = bssids
+            self.rssis  = rssis
 
-def process_rssis(filename, bssids, zip_name=[]):
+def process_rssis(filename, bssids, zip_name=[], event=False):
     if zip_name:
         with zipfile.ZipFile(zip_name, 'r') as zip_archive:
-            return loadWiFiData(get_text_stream(filename, zip_archive), bssids)
+            return loadWiFiData(get_text_stream(filename, zip_archive), bssids, event)
     else:
         with open(filename, 'r', encoding='utf-8', errors='ignore') as f:
             reader=csv.reader(f)
-            return loadWiFiData(reader, bssids)
+            return loadWiFiData(reader, bssids, event)
 
 def set_bssids(rssis, bssids, bssids_new):
     inter_bssids = set(bssids).intersection(set(bssids_new))
