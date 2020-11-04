@@ -181,6 +181,20 @@ class DB(object):
             if len(v)==len(self):
                 self.__dict__[k]=v[p]
 
+class SubDB(object):
+    def __init__(self, db, mask):
+        self.db = db
+        self.mask = mask
+    
+    def __len__(self):
+        return np.sum(self.mask)
+    
+    def get_feature(self, feature_mode='R'):
+        return self.db.get_feature(feature_mode)[self.mask]
+    
+    def get_label(self, label_mode):
+        return self.db.get_label(label_mode)[self.mask]
+
 def get_filenames(folderlist, filenumlist, prefix):
     filenames = []
     for di,num in zip(folderlist, filenumlist):
