@@ -14,7 +14,7 @@ class CNN(Base):
         self.dim_y = model_params['dim_y']
         self.layer_units = model_params['layer_units']
         self.dropouts = model_params['dropouts']
-        self.spectral_normalization = model_params['spectral_normalization']
+        self.spectral = model_params['spectral']
         self.build_model()
         self.loss_funcs['loss'] = loss_funcs[model_params['loss_func']]
         if model_params['activations'] is None:
@@ -25,7 +25,7 @@ class CNN(Base):
         self.optimizer = optim.Adadelta(self.parameters(), rho=0.95, eps=1e-7)
 
     def build_model(self):
-        if self.spectral_normalization:
+        if self.spectral:
             Linear = SNLinear
             Conv2d = SNConv2d
         else:
