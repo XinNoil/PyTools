@@ -1,7 +1,7 @@
 import os,copy
 import numpy as np
-from datahub.wifi import get_bssids, process_rssis, WiFiData, set_bssids
-from mtools import list_mask,load_h5,save_h5,load_json,save_json,csvread,np_avg,np_intersect
+from datahub.wifi import get_bssids, process_rssis, WiFiData, set_bssids, get_ssids
+from mtools import list_mask,list_con,load_h5,save_h5,load_json,save_json,csvread,np_avg,np_intersect
 
 class DB(object):
     def __init__(self, data_path, data_name, dbtype='db', cdns=[], wfiles=[], avg=False, bssids=[], save_h5_file=False, event=False):
@@ -13,6 +13,7 @@ class DB(object):
             source = 'h5'
             print('%s is using %s file'%(dbtype, source))
             self.__dict__ = load_h5(self.save_name(avg))
+            self.data_path = data_path
         elif os.path.exists(self.csv_name()):
             source = 'csv'
             print('%s is using %s file'%(dbtype, source))
@@ -111,6 +112,16 @@ class DB(object):
             self.bssids = bssids
             save_json(self.bssids_name(), self.bssids)
         self.process_rssis_all(avg, bssids_list, save_h5_file, event)
+    
+    def scan_ssids(self):
+        ssids_results = [get_ssids(filename, self.zip_name(), [], []) for filename in self.wfiles]
+        bssids_list = [bssids for bssids, ssids in ssids_results]
+        ssids_list  = [ssids  for bssids, ssids in ssids_results]
+        bssids = list_con(bssids_list)
+        ssids  = list_con(ssids_list)
+        bssids_u = list(set(bssids))
+        ssids_u  = [ssids[bssids.index(bssid)] for bssid in bssids_u]
+        return bssids_u, ssids_u
 
     def process_rssis_all(self, avg, bssids_list, save_h5_file, event):
         self.rssis = []
