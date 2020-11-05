@@ -25,3 +25,6 @@ def np_union_shuffle(a, b):
     assert len(a) == len(b)
     p = np.random.permutation(len(a))
     return a[p], b[p]
+
+def np_repeat(data, nums):
+    return np.vstack(tuple([np.array(np.tile(row, (s, 1))) for row, s in zip(data, nums)]))

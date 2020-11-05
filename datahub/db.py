@@ -1,7 +1,7 @@
 import os,copy
 import numpy as np
 from datahub.wifi import get_bssids, process_rssis, WiFiData, set_bssids, get_ssids
-from mtools import list_mask,list_con,load_h5,save_h5,load_json,save_json,csvread,np_avg,np_intersect
+from mtools import list_mask,list_con,load_h5,save_h5,load_json,save_json,csvread,np_avg,np_intersect,np_repeat
 
 class DB(object):
     def __init__(self, data_path, data_name, dbtype='db', cdns=[], wfiles=[], avg=False, bssids=[], save_h5_file=False, event=False):
@@ -87,6 +87,8 @@ class DB(object):
         if not os.path.exists(self.pre_path()):
             os.mkdir(self.pre_path())
         self.process_wifi(bssids, avg, save_h5_file, event)
+        if not avg:
+            self.cdns = np_repeat(self.cdns, self.RecordsNums)
         save_h5(self.save_name(avg), self)
     
     def process_wifi(self, bssids, avg, save_h5_file, event):
@@ -189,6 +191,20 @@ class DB(object):
         for k,v in zip(self.__dict__.keys(), self.__dict__.values()):
             if len(v)==len(self):
                 self.__dict__[k]=v[p]
+
+class SubDB(object):
+    def __init__(self, db, mask):
+        self.db = db
+        self.mask = mask
+    
+    def __len__(self):
+        return np.sum(self.mask)
+    
+    def get_feature(self, feature_mode='R'):
+        return self.db.get_feature(feature_mode)[self.mask]
+    
+    def get_label(self, label_mode):
+        return self.db.get_label(label_mode)[self.mask]
 
 def get_filenames(folderlist, filenumlist, prefix):
     filenames = []

@@ -1,4 +1,4 @@
-import csv, json, h5py
+import os, csv, json, h5py
 import scipy.io
 import numpy as np
 from .np import str2np, np2str
@@ -6,6 +6,11 @@ from .np import str2np, np2str
 # IO: json, h5, csv, mat
 def tojson(o, ensure_ascii=True):
     return json.dumps(o, default=lambda obj: obj.__dict__, sort_keys=True,ensure_ascii=ensure_ascii)
+
+def check_dir(path):
+    if not os.path.exists(path):
+        os.makedirs(path)
+    return path
 
 def toobj(strjson):
     json.loads(strjson)
