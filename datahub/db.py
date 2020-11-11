@@ -91,16 +91,19 @@ class DB(object):
             self.cdns = np_repeat(self.cdns, self.RecordsNums)
         save_h5(self.save_name(avg), self)
     
+    def process_bssids_max_rssis(self):
+        bssids_results = [get_bssids(filename, self.zip_name(), [], []) for filename in self.wfiles]
+        bssids_list = [bssids for bssids, max_rssis in bssids_results]
+        max_rssis_list = [max_rssis for bssids, max_rssis in bssids_results]
+        save_json(self.bssids_list_name(), bssids_list)
+        save_json(self.max_rssis_list_name(), max_rssis_list)
+    
     def process_wifi(self, bssids, avg, save_h5_file, event):
         if os.path.exists(self.bssids_list_name()) & os.path.exists(self.max_rssis_list_name()):
             bssids_list = load_json(self.bssids_list_name())
             max_rssis_list = load_json(self.max_rssis_list_name())
         else:
-            bssids_results = [get_bssids(filename, self.zip_name(), [], []) for filename in self.wfiles]
-            bssids_list = [bssids for bssids, max_rssis in bssids_results]
-            max_rssis_list = [max_rssis for bssids, max_rssis in bssids_results]
-            save_json(self.bssids_list_name(), bssids_list)
-            save_json(self.max_rssis_list_name(), max_rssis_list)
+            self.process_bssids_max_rssis()
         if bssids:
             self.bssids = bssids
         elif os.path.exists(self.bssids_name()):

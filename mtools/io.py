@@ -12,6 +12,12 @@ def check_dir(path):
         os.makedirs(path)
     return path
 
+def file_dir(file):
+    '''
+    get path of *.py : file_dir(__file__)
+    '''
+    return os.path.split(os.path.abspath(file))[0]
+
 def toobj(strjson):
     json.loads(strjson)
 
