@@ -25,7 +25,7 @@ def get_filename(args, name, file_extension='csv', file_type='output', by_exp_no
         return os.path.join(get_gen_dir(args), '%s_%s.%s' % (args.data_name, postfix, file_extension))
 
 def get_out_dir(args): 
-    return check_dir(os.path.join('output', args.output, '%s_%s_%s' % (args.data_name, args.data_ver, args.feature_mode)))
+    return check_dir(os.path.join('output', args.output, '%s_%s_%s' % (args.data_name, args.data_ver, args.feature_mode) if hasattr(args, 'feature_mode') else '%s_%s' % (args.data_name, args.data_ver)))
 
 def get_gen_dir(args):
     return check_dir(os.path.join(gen_path, args.data_ver, args.output))
@@ -137,3 +137,14 @@ def curve_plot(history, args, curve_name='curve', reporters=None, ylim=None, fon
     plt.savefig(get_filename(args, curve_name, 'png'))
     with open(get_filename(args, curve_name, 'json'),'w') as f:
         f.write(tojson(save_history))
+
+def copy_params(s, t, inds=None, indt=None):
+    for l1,l2 in zip(s.modules(), t.modules()):
+        if issubclass(type(l1), torch.nn.Linear):
+            if l1.weight.shape == l2.weight.shape:
+                t.weight = s.weight
+                t.bias = s.bias
+            else:
+                for si,ti in zip(inds, indt):
+                    t.weight[ti] = s.weight[si]
+                t.bias = s.bias

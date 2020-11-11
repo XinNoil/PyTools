@@ -9,10 +9,13 @@ class Base(nn.Module): #, metaclass=abc.ABCMeta
     def __init__(self, name, args, **model_params):
         super().__init__()
         self.name = name
-        self.args = args # args.output, self.args.data_name, args.data_ver, self.args.exp_no, args.feature_mode
+        self.args = args # args.output, self.args.data_name, args.data_ver, self.args.exp_no
         self.loss_funcs = {}
         if model_params:
             self.set_model_params(model_params)
+    
+    def train_mode(self, mode):
+        super().train(mode)
 
     # @abc.abstractmethod
     # def set_model_params(self):
@@ -24,13 +27,13 @@ class Base(nn.Module): #, metaclass=abc.ABCMeta
     # def forward(self):
     #     pass
 
-    def train(self, batch_size=16, epochs=0, validation=True, reporters=['loss','test_loss'], monitor='loss', initialize=True):
+    def train(self, batch_size=16, epochs=0, validation=True, reporters=['loss','test_loss'], monitor='loss', test_monitor=None, initialize=True):
         self.batch_size = batch_size
         self.epochs = epochs
         self.validation = validation
         self.reporters = reporters
         self.monitor = monitor
-        self.test_monitor = 'test_%s' % self.monitor
+        self.test_monitor = test_monitor if test_monitor else 'test_%s' % self.monitor
         self.initialize = initialize
         if epochs>0:
             self.on_train_begin()
@@ -38,7 +41,8 @@ class Base(nn.Module): #, metaclass=abc.ABCMeta
                 self.on_epoch_begin(e)
                 data_loader = self.datasets.get_train_loader()
                 for b, batch_data in enumerate(data_loader):
-                    self.train_on_batch(b, batch_data)
+                    losses = self.train_on_batch(b, batch_data)
+                    t.print_batch(self.epoch, self.epochs, b, self.batch_size, self.num_data, losses)
                 self.on_epoch_end()
             self.on_train_end()
         else:
@@ -63,6 +67,7 @@ class Base(nn.Module): #, metaclass=abc.ABCMeta
         self.save_end()
 
     def on_epoch_begin(self, epoch):
+        self.train_mode(True)
         self.epoch_start_time = t.time.clock()
         self.epoch = epoch
 
@@ -78,7 +83,6 @@ class Base(nn.Module): #, metaclass=abc.ABCMeta
         losses = self.get_losses(batch_data)
         losses['loss'].backward()
         self.optimizer.step()
-        t.print_batch(self.epoch, self.epochs, b, self.batch_size, self.num_data, losses)
         return losses
 
     def get_losses(self, batch_data):
@@ -91,6 +95,7 @@ class Base(nn.Module): #, metaclass=abc.ABCMeta
 
     def get_dataset_losses(self, dataset):
         with torch.no_grad():
+            self.train_mode(False)
             return self.get_losses(tuple(dataset.tensors))
 
     def set_datasets(self, datasets):
