@@ -1,4 +1,4 @@
-from itertools import compress
+from itertools import compress, chain
 
 # lists
 def list_find(l):
@@ -6,3 +6,6 @@ def list_find(l):
 
 def list_mask(l, m):
     return list(compress(l, m))
+
+def list_con(l):
+    return list(chain(*l))

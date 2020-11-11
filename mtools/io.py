@@ -4,14 +4,13 @@ import numpy as np
 from .np import str2np, np2str
 
 # IO: json, h5, csv, mat
+def tojson(o, ensure_ascii=True):
+    return json.dumps(o, default=lambda obj: obj.__dict__, sort_keys=True,ensure_ascii=ensure_ascii)
 
 def check_dir(path):
     if not os.path.exists(path):
         os.makedirs(path)
     return path
-
-def tojson(o):
-    return json.dumps(o, default=lambda obj: obj.__dict__, sort_keys=True)
 
 def toobj(strjson):
     json.loads(strjson)
@@ -22,8 +21,8 @@ def load_json(filename):
     json_file.close()
     return json.loads(json_string)
 
-def save_json(filename, obj):
-    str_json=tojson(obj)
+def save_json(filename, obj, ensure_ascii=True):
+    str_json=tojson(obj, ensure_ascii)
     with open(filename,'w') as f:
         f.write(str_json)
 
