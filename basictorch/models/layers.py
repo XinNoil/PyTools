@@ -1,4 +1,6 @@
 import torch
+from torch import nn
+from torch.autograd import Function
 import gpytorch
 from torch.utils.data import TensorDataset, DataLoader
 from gpytorch.means import ConstantMean, MultitaskMean
@@ -8,6 +10,38 @@ from gpytorch.distributions import MultitaskMultivariateNormal, MultivariateNorm
 from gpytorch.models import AbstractVariationalGP, GP
 from gpytorch.models.deep_gps import AbstractDeepGPLayer, AbstractDeepGP, DeepLikelihood
 from gpytorch.likelihoods import MultitaskGaussianLikelihood, GaussianLikelihood
+
+class GRL(Function):
+    '''
+    grl = GRL()
+    output = grl(ouput)
+    output.backward()
+    '''
+    @property
+    def alpha(self):
+        return GRL._alpha
+    
+    @alpha.setter
+    def alpha(self, num):
+        GRL._alpha = num
+
+    @staticmethod
+    def forward(ctx,input):
+        ctx.save_for_backward(input)
+        return input
+    
+    @staticmethod
+    def backward(ctx,grad_output):
+        result, = ctx.saved_tensors
+        return GRL._alpha*grad_output.neg()
+
+class DropoutLinear(nn.Linear):
+    def __init__(self, in_features, out_features, p, bias=True):
+        super(DropoutLinear, self).__init__(in_features, out_features, bias)
+        self.dropout = nn.Dropout(p=p)
+
+    def forward(self, input):
+        return self.dropout(super(DropoutLinear, self).forward(input))
 
 class DeepGPLayer(AbstractDeepGPLayer):
     def __init__(self, input_dims, output_dims, inducing_points):
@@ -151,6 +185,42 @@ class SNLinear(Linear):
 
     def forward(self, input):
         return F.linear(input, self.W_, self.bias)
+
+class DropoutSNLinear(Linear):
+    r"""Applies a linear transformation to the incoming data: :math:`y = Ax + b`
+       Args:
+           in_features: size of each input sample
+           out_features: size of each output sample
+           bias: If set to False, the layer will not learn an additive bias.
+               Default: ``True``
+       Shape:
+           - Input: :math:`(N, *, in\_features)` where :math:`*` means any number of
+             additional dimensions
+           - Output: :math:`(N, *, out\_features)` where all but the last dimension
+             are the same shape as the input.
+       Attributes:
+           weight: the learnable weights of the module of shape
+               `(out_features x in_features)`
+           bias:   the learnable bias of the module of shape `(out_features)`
+
+           W(Tensor): spectrally normalized weight
+
+           u (Tensor): the right largest singular value of W.
+       """
+    def __init__(self, in_features, out_features, p, bias=True):
+        super(DropoutSNLinear, self).__init__(in_features, out_features, bias)
+        self.register_buffer('u', torch.Tensor(1, out_features).normal_())
+        self.dropout = nn.Dropout(p)
+
+    @property
+    def W_(self):
+        w_mat = self.weight.view(self.weight.size(0), -1)
+        sigma, _u = max_singular_value(w_mat, self.u)
+        self.u.copy_(_u)
+        return self.weight / sigma
+
+    def forward(self, input):
+        return self.dropout(F.linear(input, self.W_, self.bias))
 
 class SNConv2d(conv._ConvNd):
 

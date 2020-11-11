@@ -28,10 +28,18 @@ class DNN(Base):
         else:
             self.layers = t.get_layers(self.dim_x, self.layer_units)
             self.out_layer = nn.Linear(self.layer_units[-1], self.dim_y)
+        if self.dropouts[0]>0:
+            self.dropout_i = nn.Dropout(self.dropouts[0])
+        if self.dropouts[1]>0:
+            self.dropout_h = nn.Dropout(self.dropouts[1])
 
     def forward(self, x):
+        if self.dropouts[0]>0:
+            x = self.dropout_i(x)
         for layer, activation in zip(self.layers, self.activations):
             x = acts[activation](layer(x))
+            if self.dropouts[1]>0:
+                x = self.dropout_h(x)
         x = self.out_layer(x)
         if self.out_activation is not None:
             x = acts[self.out_activation](x)
@@ -48,5 +56,6 @@ def train_dnn(args, Ds):
             ).to(t.device)
         print(model)
         model.set_datasets(Ds)
+        import pdb; pdb.set_trace()
         model.train(batch_size=args.batch_size, epochs=args.epochs, initialize=True)
     return model
