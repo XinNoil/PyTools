@@ -3,7 +3,9 @@ import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
-from mtools import tojson, save_json, load_json,check_dir
+from mtools import tojson, save_json, load_json,check_dir, colors_names
+from sklearn.manifold import TSNE
+import matplotlib.animation as animation
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print('>> device: %s\n' % str(device))
@@ -50,7 +52,7 @@ def get_layers(input_dim, layer_units, Linear = torch.nn.Linear):
 
 def initialize_model(model):
     for m in model.modules():
-        if isinstance(m, torch.nn.Linear):
+        if issubclass(type(m), torch.nn.Linear):
             torch.nn.init.uniform_(m.weight, -0.05, 0.05)
 
 def n2t(num):
@@ -107,11 +109,62 @@ def save_evaluate(output, name, head, varList):
     eval_file.writelines(txt+'\n')
     eval_file.close()
 
-def curve_plot(history, args, curve_name='curve', reporters=None, ylim=None, fontsize=15):
+def save_t_SNE(args, Xs, labels, name='t-SNE', n_components=2, fontsize=15, color='base', legend=True):
+    if color in colors_names:
+        colors = colors_names[color]
+    else:
+        cmap=plt.get_cmap(color)
+        gradients = np.linspace(0, 1, len(Xs))
+        colors = [cmap(gradient) for gradient in gradients]
+    nums = np.array([x.shape[0] for x in Xs]) if len(Xs[0].shape)>1 else np.array([1 for x in Xs])
+    if type(Xs[0]) is not np.ndarray:
+        Xs = tuple(x.cpu().numpy() for x in Xs)
+    X  = np.vstack(Xs)
+    X_embedded = TSNE(n_components=n_components).fit_transform(X)
+    Xs_embedded = np.split(X_embedded, nums.cumsum()[:-1])
+    plt.figure()
+    for i,xs_embedded in zip(range(len(Xs)), Xs_embedded):
+        # plt.plot(xs_embedded[:,0], xs_embedded[:,1], colors[i], label=labels[i])
+        plt.scatter(xs_embedded[:,0], xs_embedded[:,1], c=colors[i], marker='.', label=labels[i])
+    plt.tick_params(labelsize=fontsize)
+    plt.tight_layout()
+    plt.xlabel('z1',get_font(fontsize))
+    plt.ylabel('z2',get_font(fontsize))
+    if legend:
+        plt.legend(loc="upper right",prop=get_font(fontsize))
+    plt.savefig(get_filename(args, name, 'png'))
+
+def save_t_SNE_ani(args, Xs, labels, name='t-SNE', n_components=2, fontsize=15, color='base', legend=True):
+    if color in colors_names:
+        colors = colors_names[color]
+    else:
+        cmap=plt.get_cmap(color)
+        gradients = np.linspace(0, 1, len(Xs))
+        colors = [cmap(gradient) for gradient in gradients]
+    nums = np.array([x.shape[0] for x in Xs]) if len(Xs[0].shape)>1 else np.array([1 for x in Xs])
+    if type(Xs[0]) is not np.ndarray:
+        Xs = tuple(x.cpu().numpy() for x in Xs)
+    X  = np.vstack(Xs)
+    X_embedded = TSNE(n_components=n_components).fit_transform(X)
+    Xs_embedded = np.split(X_embedded, nums.cumsum()[:-1])
+    fig = plt.figure()
+    plt.tick_params(labelsize=fontsize)
+    plt.tight_layout()
+    plt.xlabel('z1',get_font(fontsize))
+    plt.ylabel('z2',get_font(fontsize))
+    ims = []
+    for i,xs_embedded in zip(range(len(Xs)), Xs_embedded):
+        im = plt.scatter(xs_embedded[:,0], xs_embedded[:,1], c=colors[i], marker='.', label=labels[i]).findobj()
+        ims.append(im)
+    plt.savefig(get_filename(args, name, 'png'))
+    ani = animation.ArtistAnimation(fig, ims, interval=200, repeat_delay=1000)
+    ani.save(get_filename(args, name, 'gif'),writer='pillow')
+
+def curve_plot(history, args, curve_name='curve', reporters=None, ylim=None, fontsize=15, color='base'):
+    colors = colors_names[color]
     iters = range(len(history['loss'])) 
     if reporters is None:
         reporters = list(history.keys())
-    colors = ['k','g','r','b','c','y','m','grey','brown','orange','olive','purple','pink']
     save_history = {}
     # loss
     plt.figure()
@@ -138,13 +191,28 @@ def curve_plot(history, args, curve_name='curve', reporters=None, ylim=None, fon
     with open(get_filename(args, curve_name, 'json'),'w') as f:
         f.write(tojson(save_history))
 
-def copy_params(s, t, inds=None, indt=None):
-    for l1,l2 in zip(s.modules(), t.modules()):
-        if issubclass(type(l1), torch.nn.Linear):
-            if l1.weight.shape == l2.weight.shape:
-                t.weight = s.weight
-                t.bias = s.bias
-            else:
-                for si,ti in zip(inds, indt):
-                    t.weight[ti] = s.weight[si]
-                t.bias = s.bias
+def copy_params(s, t, inds=None, indt=None, reverse=False):
+    with torch.no_grad():
+        if not reverse:
+            is_input = True
+            for ls,lt in zip(s.modules(), t.modules()):
+                if issubclass(type(ls), torch.nn.Linear):
+                    if is_input and (inds is not None):
+                        for si,ti in zip(inds, indt):
+                            lt.weight[:,ti].copy_(ls.weight[:,si])
+                        # lt.weight[:,indt].copy_(ls.weight[:,inds])
+                        lt.bias.copy_(ls.bias)
+                        is_input = False
+                    else:
+                        lt.weight.copy_(ls.weight)
+                        lt.bias.copy_(ls.bias)
+        else:
+            for i,ls,lt in zip(range(len(list(s.modules()))), s.modules(), t.modules()):
+                if issubclass(type(ls), torch.nn.Linear):
+                    if i==(len(list(s.modules()))-1) and (inds is not None):
+                        for si,ti in zip(inds, indt):
+                            lt.weight[ti,:].copy_(ls.weight[si,:])
+                        lt.bias[indt].copy_(ls.bias[inds])
+                    else:
+                        lt.weight.copy_(ls.weight)
+                        lt.bias.copy_(ls.bias)                        

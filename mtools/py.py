@@ -9,3 +9,9 @@ def list_mask(l, m):
 
 def list_con(l):
     return list(chain(*l))
+
+def intersection(a, b):
+    c = list(set(a).intersection(b))
+    i_a = [a.index(x) for x in c]
+    i_b = [b.index(x) for x in c]
+    return c, i_a, i_b

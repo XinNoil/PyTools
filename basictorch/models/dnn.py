@@ -17,7 +17,7 @@ class DNN(Base):
         if model_params['activations'] is None:
             self.activations = ['relu' for x in model_params['layer_units']]
         else:
-            self.activations = model_params['activations']
+            self.activations = [model_params['activations'] for x in model_params['layer_units']]
         self.out_activation = model_params['out_activation']
         self.optimizer = optim.Adadelta(self.parameters(), rho=0.95, eps=1e-7)
 
@@ -34,15 +34,15 @@ class DNN(Base):
             self.dropout_h = nn.Dropout(self.dropouts[1])
 
     def forward(self, x):
-        if self.dropouts[0]>0:
-            x = self.dropout_i(x)
-        for layer, activation in zip(self.layers, self.activations):
-            x = acts[activation](layer(x))
-            if self.dropouts[1]>0:
-                x = self.dropout_h(x)
-        x = self.out_layer(x)
-        if self.out_activation is not None:
-            x = acts[self.out_activation](x)
+        x = self.dropout_i(x) if self.dropouts[0]>0 else x
+        if hasattr(self, 'scale_h1'):
+            x = self.dropout_h(acts[self.activations[0]](self.layers[0](x))*self.scale_h1) if self.dropouts[1]>0 else acts[self.activations[0]](self.layers[0](x))*self.scale_h1
+            for layer, activation in zip(self.layers[1:], self.activations[1:]):
+                x = self.dropout_h(acts[activation](layer(x))) if self.dropouts[1]>0 else acts[activation](layer(x))
+        else:
+            for layer, activation in zip(self.layers, self.activations):
+                x = self.dropout_h(acts[activation](layer(x))) if self.dropouts[1]>0 else acts[activation](layer(x))
+        x = acts[self.out_activation](self.out_layer(x)) if self.out_activation else self.out_layer(x)
         return x
 
 def train_dnn(args, Ds):
@@ -56,6 +56,5 @@ def train_dnn(args, Ds):
             ).to(t.device)
         print(model)
         model.set_datasets(Ds)
-        import pdb; pdb.set_trace()
         model.train(batch_size=args.batch_size, epochs=args.epochs, initialize=True)
     return model

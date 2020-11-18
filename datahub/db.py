@@ -97,13 +97,14 @@ class DB(object):
         max_rssis_list = [max_rssis for bssids, max_rssis in bssids_results]
         save_json(self.bssids_list_name(), bssids_list)
         save_json(self.max_rssis_list_name(), max_rssis_list)
+        return bssids_list, max_rssis_list
     
     def process_wifi(self, bssids, avg, save_h5_file, event):
         if os.path.exists(self.bssids_list_name()) & os.path.exists(self.max_rssis_list_name()):
             bssids_list = load_json(self.bssids_list_name())
             max_rssis_list = load_json(self.max_rssis_list_name())
         else:
-            self.process_bssids_max_rssis()
+            bssids_list, max_rssis_list = self.process_bssids_max_rssis()
         if bssids:
             self.bssids = bssids
         elif os.path.exists(self.bssids_name()):
@@ -208,6 +209,23 @@ class SubDB(object):
     
     def get_label(self, label_mode):
         return self.db.get_label(label_mode)[self.mask]
+
+class DBs(object):
+    def __init__(self, dbs):
+        self.dbs = dbs
+    
+    def __len__(self):
+        return sum([len(db) for db in self.dbs])
+    
+    def shuffle(self):
+        for db in self.dbs:
+            db.shuffle()
+    
+    def get_feature(self, feature_mode='R'):
+        return np.vstack(tuple([db.get_feature(feature_mode) for db in self.dbs]))
+    
+    def get_label(self, label_mode):
+        return np.vstack(tuple([db.get_label(label_mode) for db in self.dbs]))
 
 def get_filenames(folderlist, filenumlist, prefix):
     filenames = []

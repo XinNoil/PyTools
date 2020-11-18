@@ -13,8 +13,6 @@ class Encoder(nn.Module):
         h = x
         if self.p > 0:
             h = self.dropout(h)
-            if self.training:
-                h = h*(1-self.p)
         for layer in self.enc_layers:
             h = torch.relu(layer(h))
         return self.z_layer(h)
