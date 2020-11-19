@@ -24,7 +24,8 @@ class DB(object):
             self.cdns = np.array(cdns)
             self.wfiles = wfiles
             self.process_data(bssids, avg, save_h5_file, event)
-        print('len: %d'%len(self))
+        if hasattr(self, 'rssis'):
+            print('len: %d'%len(self))
 
     def __len__(self):
         return self.rssis.shape[0]
@@ -87,7 +88,7 @@ class DB(object):
         if not os.path.exists(self.pre_path()):
             os.mkdir(self.pre_path())
         self.process_wifi(bssids, avg, save_h5_file, event)
-        if not avg:
+        if (not avg) and self.cdns:
             self.cdns = np_repeat(self.cdns, self.RecordsNums)
         save_h5(self.save_name(avg), self)
     

@@ -1,4 +1,4 @@
-import os, csv, json, h5py
+import os, csv, json, h5py, zipfile
 import scipy.io
 import numpy as np
 from .np import str2np, np2str
@@ -63,3 +63,11 @@ def save_mat(filename, **kwargs):
         if type(kwargs[key]) is not np.ndarray:
             kwargs[key] = np.array(kwargs[key])
     scipy.io.savemat(filename, kwargs)
+
+def get_zip_filenames(zip_src):
+    r = zipfile.is_zipfile(zip_src)
+    if r:
+        fz = zipfile.ZipFile(zip_src, 'r')
+        return fz.namelist()
+    else:
+        return False
