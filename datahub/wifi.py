@@ -5,6 +5,12 @@ from more_itertools import chunked
 from io import StringIO
 from mtools import csvwrite,load_h5
 
+def normalize_rssis(rssis):
+    rssis = (rssis+100)/80
+    rssis[rssis>1] = 1
+    rssis[rssis<0] = 0
+    return rssis
+
 def get_text_stream(filename, zip_archive):
     filename = filename.replace('\\','/')
     if filename not in zip_archive.namelist():

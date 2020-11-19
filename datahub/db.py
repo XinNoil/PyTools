@@ -1,15 +1,15 @@
 import os,copy
 import numpy as np
-from datahub.wifi import get_bssids, process_rssis, WiFiData, set_bssids, get_ssids
+from datahub.wifi import get_bssids, process_rssis, WiFiData, set_bssids, get_ssids, normalize_rssis
 from mtools import list_mask,list_con,load_h5,save_h5,load_json,save_json,csvread,np_avg,np_intersect,np_repeat
 
 class DB(object):
-    def __init__(self, data_path, data_name, dbtype='db', cdns=[], wfiles=[], avg=False, bssids=[], save_h5_file=False, event=False):
+    def __init__(self, data_path, data_name, dbtype='db', cdns=[], wfiles=[], avg=False, bssids=[], save_h5_file=False, event=False, is_load_h5=True):
         self.data_path = data_path
         self.data_name = data_name
         self.dbtype = dbtype
         print(data_name)
-        if os.path.exists(self.save_name(avg)):
+        if os.path.exists(self.save_name(avg)) and is_load_h5:
             source = 'h5'
             print('%s is using %s file'%(dbtype, source))
             self.__dict__ = load_h5(self.save_name(avg))
@@ -182,11 +182,11 @@ class DB(object):
     
     def get_feature(self, feature_mode='R'):
         if feature_mode == 'R':
-            return self.rssis
-        elif feature_mode is 'MM' :
+            return normalize_rssis(self.rssis) if np.max(self.rssis)<0 else self.rssis
+        elif feature_mode is 'MM':
             return self.mags
-        elif feature_mode is 'RMM' :
-            return np.hstack((self.mags, self.rssis))
+        elif feature_mode is 'RMM':
+            return np.hstack((self.mags, normalize_rssis(self.rssis) if np.max(self.rssis)<0 else self.rssis))
     
     def get_label(self, label_mode):
         return self.cdns
