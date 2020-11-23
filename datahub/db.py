@@ -14,6 +14,8 @@ class DB(object):
             print('%s is using %s file'%(dbtype, source))
             self.__dict__ = load_h5(self.save_name(avg))
             self.data_path = data_path
+            if bssids:
+                self.set_bssids(bssids)
         elif os.path.exists(self.csv_name()):
             source = 'csv'
             print('%s is using %s file'%(dbtype, source))
@@ -88,7 +90,7 @@ class DB(object):
         if not os.path.exists(self.pre_path()):
             os.mkdir(self.pre_path())
         self.process_wifi(bssids, avg, save_h5_file, event)
-        if (not avg) and self.cdns:
+        if (not avg) and len(self.cdns):
             self.cdns = np_repeat(self.cdns, self.RecordsNums)
         save_h5(self.save_name(avg), self)
     
