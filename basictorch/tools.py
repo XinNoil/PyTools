@@ -54,6 +54,14 @@ def initialize_model(model):
     for m in model.modules():
         if issubclass(type(m), torch.nn.Linear):
             torch.nn.init.uniform_(m.weight, -0.05, 0.05)
+        # elif issubclass(type(m), (torch.nn.Conv2d, torch.nn.ConvTranspose2d)):
+        #     torch.nn.init.xavier_uniform(m.weight)
+
+def spectral_norm(m):
+    if isinstance(m, (torch.nn.Conv2d, torch.nn.ConvTranspose2d, torch.nn.Linear)):
+        return torch.nn.utils.spectral_norm(m)
+    else:
+        return m
 
 def n2t(num):
     return torch.FloatTensor(num).to(device)
@@ -215,4 +223,4 @@ def copy_params(s, t, inds=None, indt=None, reverse=False):
                         lt.bias[indt].copy_(ls.bias[inds])
                     else:
                         lt.weight.copy_(ls.weight)
-                        lt.bias.copy_(ls.bias)                        
+                        lt.bias.copy_(ls.bias)

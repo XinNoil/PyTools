@@ -197,7 +197,10 @@ class DB(object):
         p = np.random.permutation(len(self))
         for k,v in zip(self.__dict__.keys(), self.__dict__.values()):
             if len(v)==len(self):
-                self.__dict__[k]=v[p]
+                if (type(v)==list)&(type(v[0])==str):
+                    self.__dict__[k]=list_mask(v, p)
+                else:
+                    self.__dict__[k]=v[p]
 
 class SubDB(object):
     def __init__(self, db, mask):
@@ -205,7 +208,7 @@ class SubDB(object):
         self.mask = mask
     
     def __len__(self):
-        return np.sum(self.mask)
+        return np.sum(self.mask) if len(self.db)==len(self.mask) & max(self.mask)>1 else len(self.mask)
     
     def get_feature(self, feature_mode='R'):
         return self.db.get_feature(feature_mode)[self.mask]

@@ -6,26 +6,33 @@ import basictorch.tools as t
 from .losses import loss_funcs
 
 class Base(nn.Module): #, metaclass=abc.ABCMeta
-    def __init__(self, name, args, **model_params):
+    def __init__(self, name, args, set_model_params=True, **model_params):
         super().__init__()
         self.name = name
         self.args = args # args.output, self.args.data_name, args.data_ver, self.args.exp_no
         self.loss_funcs = {}
-        if model_params:
+        if set_model_params:
             self.set_model_params(model_params)
     
     def train_mode(self, mode):
         super().train(mode)
 
-    # @abc.abstractmethod
-    # def set_model_params(self):
-    #     pass
-    #
-    # def build_model(self):
-    #     pass
-    #
-    # def forward(self):
-    #     pass
+    def set_model_params(self, model_params, default_model_params={}):
+        self.model_params = self.get_model_params(model_params, default_model_params)
+        for param in model_params:
+            self.__dict__[param] = model_params[param].copy() if isinstance(model_params[param], list) else model_params[param]
+    
+    def get_model_params(self, model_params, default_model_params):
+        for param in default_model_params:
+            if param not in model_params:
+                model_params[param] = default_model_params[param]
+        return model_params
+            
+    def build_model(self):
+        self.sequential = nn.Sequential()
+
+    def forward(self, x):
+        return self.sequential(x)
 
     def train(self, batch_size=16, epochs=0, validation=True, reporters=['loss','test_loss'], monitor='loss', test_monitor=None, initialize=True):
         self.batch_size = batch_size
@@ -53,12 +60,12 @@ class Base(nn.Module): #, metaclass=abc.ABCMeta
         t.set_weight_file(self)
         self.history = {}
         self.check_validation()
-        self.train_fit_time = t.time.clock()
+        self.train_fit_time = t.time.process_time()
         if self.initialize:
             self.initialize_model()
     
     def on_train_end(self):
-        self.fit_time = t.time.clock() - self.train_fit_time
+        self.fit_time = t.time.process_time() - self.train_fit_time
         if self.validation:
             self.load_state_dict(torch.load(self.weights_file))
         if torch.cuda.is_available():
@@ -68,11 +75,11 @@ class Base(nn.Module): #, metaclass=abc.ABCMeta
 
     def on_epoch_begin(self, epoch):
         self.train_mode(True)
-        self.epoch_start_time = t.time.clock()
+        self.epoch_start_time = t.time.process_time()
         self.epoch = epoch
 
     def on_epoch_end(self):
-        epoch_time = t.time.clock() - self.epoch_start_time
+        epoch_time = t.time.process_time() - self.epoch_start_time
         losses = self.evaluate()
         self.check_validation(losses)
         self.add_losses_to_history(losses)
@@ -166,4 +173,12 @@ acts = {
     'relu':torch.relu,
     'tanh':torch.tanh,
     'sigmoid':torch.sigmoid,
+    'leakyrelu':torch.nn.functional.leaky_relu,
+}
+
+act_modules = {
+    'relu':nn.ReLU(),
+    'tanh':nn.Tanh(),
+    'sigmoid':nn.Sigmoid(),
+    'leakyrelu':torch.nn.modules.LeakyReLU(),
 }

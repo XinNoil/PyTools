@@ -1,8 +1,11 @@
 import torch
 from torch import nn
+import torch.nn.functional as F
 from torch.autograd import Function
+from torch.nn import Linear
+from torch.nn.modules import conv
+from torch.nn.modules.utils import _pair
 import gpytorch
-from torch.utils.data import TensorDataset, DataLoader
 from gpytorch.means import ConstantMean, MultitaskMean
 from gpytorch.kernels import RBFKernel, ScaleKernel, MultitaskKernel
 from gpytorch.variational import VariationalStrategy, CholeskyVariationalDistribution
@@ -10,6 +13,18 @@ from gpytorch.distributions import MultitaskMultivariateNormal, MultivariateNorm
 from gpytorch.models import AbstractVariationalGP, GP
 from gpytorch.models.deep_gps import AbstractDeepGPLayer, AbstractDeepGP, DeepLikelihood
 from gpytorch.likelihoods import MultitaskGaussianLikelihood, GaussianLikelihood
+
+class E(nn.Module):
+    def forward(self, x):
+        return x
+
+class View(nn.Module):
+    def __init__(self, *shape):
+        super().__init__()
+        self.shape = shape
+
+    def forward(self, input):
+        return input.view(*self.shape)
 
 class GRL(Function):
     '''
@@ -125,11 +140,6 @@ class DeepGP(AbstractDeepGP):
     def predict(self, x):
         with gpytorch.settings.fast_computations(log_prob=False, solves=False), torch.no_grad():
             return self(x)
-
-from torch.nn import Linear
-import torch.nn.functional as F
-from torch.nn.modules import conv
-from torch.nn.modules.utils import _pair
 
 #define _l2normalization
 def _l2normalize(v, eps=1e-12):
