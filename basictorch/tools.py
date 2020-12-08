@@ -43,6 +43,7 @@ def get_exp_no(args, e):
             return args.data_postfix + 'e' + str(e)
     return 'e' + str(e)
 
+# torch models tools
 def get_layers(input_dim, layer_units, Linear = torch.nn.Linear):
     layers = torch.nn.ModuleList()
     layers.append(Linear(input_dim, layer_units[0]))
@@ -62,6 +63,9 @@ def spectral_norm(m):
         return torch.nn.utils.spectral_norm(m)
     else:
         return m
+
+def get_parameters(model, names):
+    return [{'params':model.__dict__[name].parameters()} for name in names]
 
 def n2t(num):
     return torch.FloatTensor(num).to(device)
