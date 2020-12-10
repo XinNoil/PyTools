@@ -32,7 +32,7 @@ class DNN(Base):
         if self.spectral:
             self.apply(t.spectral_norm)
 
-def train_dnn(args, Ds, dnn=None):
+def train_dnn(args, Ds, dnn=None, model_params={}):
     if not dnn:
         dnn = DNN
     for e in range(args.trails):
@@ -42,6 +42,7 @@ def train_dnn(args, Ds, dnn=None):
                 dim_y=Ds.train_dataset.tensors[1].shape[1],
                 layer_units = args.layer_units,
                 dropouts = args.dropouts,
+                **model_params
             ).to(t.device)
         print(model)
         model.set_datasets(Ds)

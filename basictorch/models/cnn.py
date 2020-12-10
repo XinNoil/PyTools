@@ -13,6 +13,7 @@ default_model_params={
         'dropouts':[0.0, 0.0], 
         'loss_func':'mee', 
         'spectral':False,
+        'pooling':'max',
     },
     'dcnn':{
         'cons':[1,8,16],
@@ -25,7 +26,13 @@ default_model_params={
         'dropouts':[0.0, 0.0], 
         'loss_func':'mee', 
         'spectral':False,
+        'pooling':'max',
     }
+}
+
+poolings={
+    'max':nn.MaxPool2d(2),
+    'avg':nn.AvgPool2d(2),
 }
 
 class CNN(Base):
@@ -33,6 +40,7 @@ class CNN(Base):
         super().set_model_params(model_params, default_model_params['cnn'])
         self.dim_co = int(self.dim/(2**(len(self.cons)-1)))
         self.layer_units.insert(0, self.cons[-1] * self.dim_co * self.dim_co)
+        self.pooling = poolings[self.pooling]
         self.loss_funcs['loss'] = loss_funcs[self.loss_func]
         self.build_model()
         self.optimizer = optim.Adadelta(self.parameters(), rho=0.95, eps=1e-7)
@@ -48,20 +56,16 @@ class CNN(Base):
                 nn.Sequential(
                     nn.Conv2d(con_in, con_out, 5, 1, 2),
                     nn.ReLU(),
-                    nn.MaxPool2d(2),
+                    self.pooling,
                 )
             )
+        self.sequential.add_module('flatten', torch.nn.modules.Flatten())
         if self.layer_units:
-            self.sequential.add_module('flatten', torch.nn.modules.Flatten())
             for i in range(len(self.layer_units)-1):
                 self.sequential.add_module('layer%d'%(i), nn.Linear(self.layer_units[i], self.layer_units[i+1]))
                 self.sequential.add_module('%s%d'%(self.activations, i), act_modules[self.activations])
             if self.dim_y:
                 self.sequential.add_module('out_layer', nn.Linear(self.layer_units[-1], self.dim_y))
-        else:
-            if self.dim_y:
-                self.sequential.add_module('flatten', torch.nn.modules.Flatten())
-                self.sequential.add_module('out_layer', nn.Linear(self.cons[-1] * self.dim_co * self.dim_co, self.dim_y))
         if self.out_activation:
             self.sequential.add_module(self.out_activation, act_modules[self.out_activation])
         if self.spectral:
@@ -73,7 +77,9 @@ class DCNN(Base):
         self.dim_co = int(self.dim/(2**(len(self.cons)-1)))
         self.cons.reverse()
         self.layer_units.reverse()
-        self.layer_units.insert(0, self.cons[0] * self.dim_co * self.dim_co)
+        if self.dim_x:
+            self.layer_units.insert(0, self.dim_x)
+        self.layer_units.append(self.cons[0] * self.dim_co * self.dim_co)
         self.loss_funcs['loss'] = loss_funcs[self.loss_func]
         self.build_model()
         self.optimizer = optim.Adam(self.parameters(), lr=2.0e-4, betas=(0.5, 0.999))
@@ -84,7 +90,7 @@ class DCNN(Base):
             for i in range(len(self.layer_units)-1):
                 self.sequential.add_module('layer%d'%i, nn.Linear(self.layer_units[i], self.layer_units[i+1]))
                 self.sequential.add_module('%s%d'%(self.activations, i), act_modules[self.activations])
-            self.sequential.add_module('view', View(-1, self.cons[0], self.dim_co, self.dim_co))
+        self.sequential.add_module('view', View(-1, self.cons[0], self.dim_co, self.dim_co))
         for i, con_in, con_out in zip(range(len(self.cons)-1), self.cons[:-1], self.cons[1:]):
             self.sequential.add_module(
                 'deconv%d'%i,
