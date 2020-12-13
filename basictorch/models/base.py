@@ -46,10 +46,7 @@ class Base(nn.Module): #, metaclass=abc.ABCMeta
             self.on_train_begin()
             for e in range(self.epochs):
                 self.on_epoch_begin(e)
-                data_loader = self.datasets.get_train_loader()
-                for b, batch_data in enumerate(data_loader):
-                    losses = self.train_on_batch(b, batch_data)
-                    t.print_batch(self.epoch, self.epochs, b, self.batch_size, self.num_data, losses)
+                self.train_on_epoch()
                 self.on_epoch_end()
             self.on_train_end()
         else:
@@ -77,6 +74,12 @@ class Base(nn.Module): #, metaclass=abc.ABCMeta
         self.train_mode(True)
         self.epoch_start_time = t.time.process_time()
         self.epoch = epoch
+    
+    def train_on_epoch(self):
+        data_loader = self.datasets.get_train_loader()
+        for b, batch_data in enumerate(data_loader):
+            losses = self.train_on_batch(b, batch_data)
+            t.print_batch(self.epoch, self.epochs, b, self.batch_size, self.num_data, losses)
 
     def on_epoch_end(self):
         epoch_time = t.time.process_time() - self.epoch_start_time
@@ -181,4 +184,9 @@ act_modules = {
     'tanh':nn.Tanh(),
     'sigmoid':nn.Sigmoid(),
     'leakyrelu':torch.nn.modules.LeakyReLU(),
+}
+
+poolings={
+    'max':nn.MaxPool2d(2),
+    'avg':nn.AvgPool2d(2),
 }

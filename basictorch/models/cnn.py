@@ -14,6 +14,7 @@ default_model_params={
         'loss_func':'mee', 
         'spectral':False,
         'pooling':'max',
+        'norm_layer':None,
     },
     'dcnn':{
         'cons':[1,8,16],
@@ -27,13 +28,28 @@ default_model_params={
         'loss_func':'mee', 
         'spectral':False,
         'pooling':'max',
+        'norm_layer':None,
     }
 }
 
-poolings={
-    'max':nn.MaxPool2d(2),
-    'avg':nn.AvgPool2d(2),
+norm_layers = {
+    'batchnorm':nn.BatchNorm2d,
 }
+
+def get_block(con_in, con_out, activations, pooling, norm_layer=None):
+    if norm_layer:
+        return nn.Sequential(
+            nn.Conv2d(con_in, con_out, 5, 1, 2),
+            norm_layers[norm_layer](con_out),
+            act_modules[activations],
+            pooling,
+        )
+    else:
+        return nn.Sequential(
+            nn.Conv2d(con_in, con_out, 5, 1, 2),
+            act_modules[activations],
+            pooling,
+        )
 
 class CNN(Base):
     def set_model_params(self, model_params):
@@ -51,14 +67,7 @@ class CNN(Base):
             self.sequential.add_module('reshape', nn.Linear(self.dim_x, self.cons[0]*self.dim*self.dim))
         self.sequential.add_module('view', View(-1, self.cons[0], self.dim, self.dim))
         for i, con_in, con_out in zip(range(len(self.cons)-1), self.cons[:-1], self.cons[1:]):
-            self.sequential.add_module(
-                'conv%d'%i,
-                nn.Sequential(
-                    nn.Conv2d(con_in, con_out, 5, 1, 2),
-                    nn.ReLU(),
-                    self.pooling,
-                )
-            )
+            self.sequential.add_module('conv%d'%i, get_block(con_in, con_out, self.activations, self.pooling, self.norm_layer))
         self.sequential.add_module('flatten', torch.nn.modules.Flatten())
         if self.layer_units:
             for i in range(len(self.layer_units)-1):

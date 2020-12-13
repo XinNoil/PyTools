@@ -8,9 +8,9 @@ from sklearn.manifold import TSNE
 import matplotlib.animation as animation
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-print('>> device: %s\n' % str(device))
 
 def get_device(d):
+    print('>> device: %s\n' % str(device))
     return torch.device("cuda:%d"%d if torch.cuda.is_available() else "cpu")
 
 gen_path = os.environ['DEEPPRINT_GEN_PATH']
