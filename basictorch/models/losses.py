@@ -1,5 +1,6 @@
 import torch as T
 import numpy as np
+from .layers import softplus
 
 def euclidean_error(output, target):
     return T.sqrt(T.sum((output - target)**2, dim=-1))
@@ -33,21 +34,28 @@ def root_mean_square_error(y, y_pred):
 
 # [pytorch-pne](https://github.com/github-jnauta/pytorch-pne/blob/master/models/pnn.py)
 def negative_log_likelihood(outputs, truth, distance=T.sub):
-        """ Compute the Negative Log Likelihood """
-        mean, var = outputs
-        diff = distance(truth, mean)
-        var = softplus(var)
-        # TODO: Check min and max variance
-        loss = T.mean(T.div(diff**2, var))
-        loss += T.mean(T.log(var))
-        return loss 
+    """ Compute the Negative Log Likelihood """
+    mean, var = outputs
+    diff = distance(truth, mean)
+    var = softplus(var)
+    # TODO: Check min and max variance
+    loss = T.mean(T.div(diff**2, var))
+    loss += T.mean(T.log(var))
+    return loss
 
-def softplus(x):
-        """ Positivity constraint """
-        softplus = T.log(1+T.exp(x))
-        # Avoid infinities due to taking the exponent
-        softplus = T.where(softplus==float('inf'), x, softplus)
-        return softplus
+def nig_nll(y, gamma, v, alpha, beta):
+    twoBlambda = 2*beta*(1+v)
+    nll = 0.5*T.log(np.pi/v)  \
+        - alpha*T.log(twoBlambda)  \
+        + (alpha+0.5) * T.log(v*(y-gamma)**2 + twoBlambda)  \
+        + T.lgamma(alpha)  \
+        - T.lgamma(alpha+0.5)
+    return T.mean(nll)
+
+def nig_reg(y, gamma, v, alpha):
+    evi = 2*v+(alpha)
+    reg = T.abs(y-gamma)*evi
+    return T.mean(reg)
 
 mee = mean_euclidean_error
 mrl = mean_rec_loss

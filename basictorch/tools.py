@@ -74,6 +74,9 @@ def get_parameters(model, names):
 def n2t(num):
     return torch.FloatTensor(num).to(device)
 
+def t2n(tensor):
+    return tensor.detach().cpu().numpy()
+
 def print_batch(e, epochs, b, batch_size, num_data, losses):
     ratio = 100.0 * ((b+1) * batch_size) / num_data
     print(chr(27) + "[2K", end='')
@@ -193,7 +196,9 @@ def curve_plot(history, args, curve_name='curve', reporters=None, ylim=None, fon
     plt.ylabel('epochs-loss',get_font(fontsize))
     plt.legend(loc="upper right",prop=get_font(fontsize))
     if not ylim:
-        y_max = np.max(history['loss'])
+        tmp = history['loss']
+        np.nan_to_num(tmp)
+        y_max = np.max(tmp)
         for r in reporters:
             if r in history:
                 y_max = np.max((y_max, np.max(history[r])))

@@ -1,5 +1,7 @@
 from .base import *
 from .dnn import DNN
+from .losses import euclidean_error
+import mtools as mt
 
 default_model_params={
     'dim_x':None, 
@@ -37,4 +39,13 @@ class MCPNN(DNN):
         loss = self.loss_funcs['loss'](output, labels)
         loss_mean = self.loss_funcs['loss'](outputs[0], labels)
         return {'loss':loss, 'loss_mean':loss_mean}
+    
+    def save_end(self):
+        super().save_end()
+        x_test, y_test = self.datasets.test_dataset.tensors
+        self.train_mode(True)
+        y_mean, y_var = self.predict(x_test)
+        err = euclidean_error(y_test, y_mean)
+        output_tensor = torch.cat((y_test, y_mean, y_var, err.view(-1, 1)), dim=-1)
+        mt.csvwrite(t.get_filename(self.args, 'test_result','csv'), output_tensor.detach().cpu().numpy())
         

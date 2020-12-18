@@ -4,10 +4,11 @@ from datahub.wifi import get_bssids, process_rssis, WiFiData, set_bssids, get_ss
 from mtools import list_mask,list_con,load_h5,save_h5,load_json,save_json,csvread,np_avg,np_intersect,np_repeat
 
 class DB(object):
-    def __init__(self, data_path, data_name, dbtype='db', cdns=[], wfiles=[], avg=False, bssids=[], save_h5_file=False, event=False, is_load_h5=True):
+    def __init__(self, data_path, data_name, dbtype='db', cdns=[], wfiles=[], avg=False, bssids=[], save_h5_file=False, event=False, is_load_h5=True, start_time=-4):
         self.data_path = data_path
         self.data_name = data_name
         self.dbtype = dbtype
+        self.start_time = start_time
         print(data_name)
         if os.path.exists(self.save_name(avg)) and is_load_h5:
             source = 'h5'
@@ -146,6 +147,7 @@ class DB(object):
             rssis = set_bssids(wiFiData.rssis, bssids, self.bssids)
             if not event:
                 rssis = np.array([np.mean(x, 0) for x in np.array_split(rssis, np.floor(len(rssis)/5.0), axis=0)])
+                rssis = rssis[self.start_time:]
             if avg:
                 self.rssis.append(np.mean(rssis, axis=0))
             else:
@@ -165,13 +167,14 @@ class DB(object):
     
     def set_mask(self, mask):
         for k,v in zip(self.__dict__.keys(), self.__dict__.values()):
-            if (type(mask[0])==bool or type(mask[0])==np.bool_) & (len(v)==len(self)):
-                if (type(v)==list)&(type(v[0])==str):
-                    self.__dict__[k]=list_mask(v, mask)
-                elif type(v)==np.ndarray:
+            if hasattr(v,'__len__'):
+                if (type(mask[0])==bool or type(mask[0])==np.bool_) & (len(v)==len(self)):
+                    if (type(v)==list)&(type(v[0])==str):
+                        self.__dict__[k]=list_mask(v, mask)
+                    elif type(v)==np.ndarray:
+                        self.__dict__[k]=v[mask]
+                elif len(v)==len(self):
                     self.__dict__[k]=v[mask]
-            elif len(v)==len(self):
-                self.__dict__[k]=v[mask]
     
     def set_bssids(self, bssids):
         self.rssis = set_bssids(self.rssis, self.bssids, bssids)
@@ -196,11 +199,12 @@ class DB(object):
     def shuffle(self):
         p = np.random.permutation(len(self))
         for k,v in zip(self.__dict__.keys(), self.__dict__.values()):
-            if len(v)==len(self):
-                if (type(v)==list)&(type(v[0])==str):
-                    self.__dict__[k]=list_mask(v, p)
-                else:
-                    self.__dict__[k]=v[p]
+            if hasattr(v,'__len__'):
+                if len(v)==len(self):
+                    if (type(v)==list)&(type(v[0])==str):
+                        self.__dict__[k]=list_mask(v, p)
+                    else:
+                        self.__dict__[k]=v[p]
 
 class SubDB(object):
     def __init__(self, db, mask):

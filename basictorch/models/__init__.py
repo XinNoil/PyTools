@@ -6,5 +6,5 @@ from .cnn import CNN, DCNN
 from .ae import Encoder, Decoder, AE
 from .resnet import ResNet
 from .semi import SemiModel
-from .layers import GRL, DropoutLinear, DeepGPLayer, DeepGP, E, View
+from .layers import GRL, DeepGPLayer, DeepGP, E, View
 from .losses import loss_funcs, adv_losses

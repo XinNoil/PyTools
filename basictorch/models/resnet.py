@@ -114,6 +114,7 @@ default_model_params = {
     'groups':1, 
     'replace_stride_with_dilation':False,
     'norm_layer':None, 
+    'avgpool':True,
 }
 
 block_dict = {
@@ -151,9 +152,13 @@ class ResNet(Base):
             'blocks',
             self._make_layer(self.block, self.cons[2], self.blocks, dilate=self.replace_stride_with_dilation)
         )
-        self.sequential.add_module('avgpool', nn.AdaptiveAvgPool2d((1, 1)))
-        self.sequential.add_module('flatten', torch.nn.modules.Flatten())
-        self.sequential.add_module('out_layer', nn.Linear(self.cons[2] * self.block.expansion, self.dim_y))
+        if self.avgpool:
+            self.sequential.add_module('avgpool', nn.AdaptiveAvgPool2d((1, 1)))
+            self.sequential.add_module('flatten', torch.nn.modules.Flatten())
+            self.sequential.add_module('out_layer', nn.Linear(self.cons[2] * self.block.expansion, self.dim_y))
+        else:
+            self.sequential.add_module('flatten', torch.nn.modules.Flatten())
+            self.sequential.add_module('out_layer', nn.Linear(self.cons[2] * self.block.expansion * self.dim * self.dim, self.dim_y))
     
     def forward(self, x):
         for m in self.sequential:
@@ -202,3 +207,103 @@ class ResNet(Base):
                                 norm_layer=norm_layer))
 
         return nn.Sequential(*layers)
+
+# default_model_params_d = {
+#     'cons':[1,8,16],
+#     'dim':64,
+#     'dim_x':None, 
+#     'dim_y':None, 
+#     'layer_units':[], 
+#     'activations':'relu', 
+#     'out_activation':None, 
+#     'dropouts':[0.0, 0.0], 
+#     'loss_func':'mee', 
+#     'spectral':False,
+#     'block':'basicblock',
+#     'blocks':3,
+#     'zero_init_residual':False,
+#     'groups':1, 
+#     'replace_stride_with_dilation':False,
+#     'norm_layer':None, 
+#     'avgpool':True,
+# }
+
+# class DeResNet(Base):
+#     def set_model_params(self, model_params):
+#         Base.set_model_params(self, model_params, default_model_params_d)
+#         self.block = block_dict[self.block]
+#         self.loss_funcs['loss'] = loss_funcs[self.loss_func]
+#         self.dilation = 1
+#         self.inplanes = self.cons[1]
+#         self._norm_layer = nn.BatchNorm2d
+#         self.base_width = self.dim
+#         self.build_model()
+#         self.optimizer = optim.Adadelta(self.parameters(), rho=0.95, eps=1e-7)
+
+#     def build_model(self):
+#         self.sequential = nn.Sequential()
+#         if self.avgpool:
+#         self.sequential.add_module('out_layer', nn.Linear(self.cons[2] * self.block.expansion, self.dim_y))
+#         self.sequential.add_module('flatten', torch.nn.modules.Flatten())
+#         self.sequential.add_module('avgpool', nn.AdaptiveAvgPool2d((1, 1)))
+#         self.sequential.add_module('blocks', self._make_layer(self.block, self.cons[2], self.blocks, dilate=self.replace_stride_with_dilation))
+#         self.sequential.add_module(
+#             'conv',
+#             nn.Sequential(
+#                 nn.Conv2d(self.cons[0], self.cons[1], 5, 1, 2, bias=False),
+#                 self._norm_layer(self.cons[1]),
+#                 nn.ReLU(inplace=True),
+#                 nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
+#             )
+#         )
+#         self.sequential.add_module('view', View(-1, self.cons[0], self.dim, self.dim))
+#         if self.dim_x:
+#             self.sequential.add_module('reshape', nn.Linear(self.dim_x, self.cons[0]*self.dim*self.dim))
+        
+#     def forward(self, x):
+#         for m in self.sequential:
+#             x = m(x)
+#         return x
+
+#     def initialize_model(self):
+#         super().initialize_model()
+#         for m in self.modules():
+#             if isinstance(m, nn.Conv2d):
+#                 nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+#             elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
+#                 nn.init.constant_(m.weight, 1)
+#                 nn.init.constant_(m.bias, 0)
+
+#         # Zero-initialize the last BN in each residual branch,
+#         # so that the residual branch starts with zeros, and each residual block behaves like an identity.
+#         # This improves the model by 0.2~0.3% according to https://arxiv.org/abs/1706.02677
+#         if self.zero_init_residual:
+#             for m in self.modules():
+#                 if isinstance(m, Bottleneck):
+#                     nn.init.constant_(m.bn3.weight, 0)
+#                 elif isinstance(m, BasicBlock):
+#                     nn.init.constant_(m.bn2.weight, 0)
+
+#     def _make_layer(self, block, planes, blocks, stride=1, dilate=False):
+#         norm_layer = self._norm_layer
+#         downsample = None
+#         previous_dilation = self.dilation
+#         if dilate:
+#             self.dilation *= stride
+#             stride = 1
+#         if stride != 1 or self.inplanes != planes * block.expansion:
+#             downsample = nn.Sequential(
+#                 conv1x1(self.inplanes, planes * block.expansion, stride),
+#                 norm_layer(planes * block.expansion),
+#             )
+
+#         layers = []
+#         layers.append(block(self.inplanes, planes, stride, downsample, self.groups,
+#                             self.base_width, previous_dilation, norm_layer))
+#         self.inplanes = planes * block.expansion
+#         for _ in range(1, blocks):
+#             layers.append(block(self.inplanes, planes, groups=self.groups,
+#                                 base_width=self.base_width, dilation=self.dilation,
+#                                 norm_layer=norm_layer))
+
+#         return nn.Sequential(*layers)

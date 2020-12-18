@@ -136,7 +136,7 @@ class Base(nn.Module): #, metaclass=abc.ABCMeta
                     self.monitor_loss = val_losses[self.monitor]+1
                     self.on_epoch_end()
             else:
-                if losses['val_'+self.monitor] < self.monitor_loss:
+                if (losses['val_'+self.monitor] < self.monitor_loss) and not torch.isnan(losses['val_'+self.monitor]):
                     self.monitor_loss = losses['val_'+self.monitor]
                     self.monitor_losses = losses
                     torch.save(self.state_dict(), self.weights_file)
