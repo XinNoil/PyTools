@@ -30,8 +30,13 @@ def get_filename(args, name, file_extension='csv', file_type='output', by_exp_no
     elif file_type == 'generate':
         return os.path.join(get_gen_dir(args), '%s_%s.%s' % (args.data_name, postfix, file_extension))
 
-def get_out_dir(args): 
-    return check_dir(os.path.join('output', args.output, '%s_%s_%s' % (args.data_name, args.data_ver, args.feature_mode) if hasattr(args, 'feature_mode') else '%s_%s' % (args.data_name, args.data_ver)))
+def get_out_dir(args):
+    out_dir = '%s_%s' % (args.data_name, args.data_ver)
+    if hasattr(args, 'feature_mode'):
+        out_dir = '%s_%s' % (out_dir, args.feature_mode)
+    if hasattr(args, 'sub_output'):
+        out_dir = '%s_%s' % (out_dir, args.sub_output)
+    return check_dir(os.path.join('output', args.output, out_dir))
 
 def get_gen_dir(args):
     return check_dir(os.path.join(gen_path, args.data_ver, args.output))
@@ -70,6 +75,22 @@ def spectral_norm(m):
 
 def get_parameters(model, names):
     return [{'params':model.__dict__[name].parameters()} for name in names]
+
+def get_model_parameters(models):
+    return [{'params':model.parameters()} for model in models]
+
+def freeze_model(model):
+    for p in model.parameters():
+        p.requires_grad = False
+
+def unfreeze_model(model):
+    for p in model.parameters():
+        p.requires_grad = True
+
+def unfreeze_optimizer(optimizer):
+    for param_group in optimizer.param_groups:
+        for param in param_group['params']:
+            param.requires_grad = True
 
 def n2t(num):
     return torch.FloatTensor(num).to(device)

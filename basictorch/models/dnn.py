@@ -11,6 +11,17 @@ default_model_params={
     'spectral':False,
 }
 
+class dnn(nn.Module):
+    def __init__(self, dim_x, dim_y, layer_units):
+        super().__init__()
+        self.layers = t.get_layers(dim_x, layer_units)
+        self.out_layer = nn.Linear(layer_units[-1], dim_y)
+    
+    def forward(self, x):
+        for layer in self.layers:
+            x = torch.relu(layer(x))
+        return self.out_layer(x)
+
 class DNN(Base):
     def set_model_params(self, model_params):
         super().set_model_params(model_params, default_model_params)

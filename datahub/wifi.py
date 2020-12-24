@@ -11,6 +11,12 @@ def normalize_rssis(rssis):
     rssis[rssis<0] = 0
     return rssis
 
+def unnormalize_rssis(rssis):
+    rssis = rssis*80 -100
+    rssis[rssis>-20] = -20
+    rssis[rssis<-100] = -100
+    return rssis
+
 def get_text_stream(filename, zip_archive):
     filename = filename.replace('\\','/')
     if filename not in zip_archive.namelist():

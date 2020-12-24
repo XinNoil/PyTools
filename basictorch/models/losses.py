@@ -32,6 +32,9 @@ def mean_squared_error(y, y_pred):
 def root_mean_square_error(y, y_pred):
     return T.sqrt(mean_squared_error(y, y_pred))
 
+def mean_root_mean_square_error(y, y_pred):
+    return T.mean(T.sqrt(T.mean((y_pred-y)**2, dim=-1)))
+
 # [pytorch-pne](https://github.com/github-jnauta/pytorch-pne/blob/master/models/pnn.py)
 def negative_log_likelihood(outputs, truth, distance=T.sub):
     """ Compute the Negative Log Likelihood """
@@ -64,6 +67,7 @@ mdl = mean_dis_loss
 mse = mean_squared_error
 nll = negative_log_likelihood
 rmse = root_mean_square_error
+mrmse = mean_root_mean_square_error
 
 loss_funcs={
     'mee':mee,
@@ -73,6 +77,7 @@ loss_funcs={
     'mse':mse,
     'nll':nll,
     'rmse':rmse,
+    'mrmse':mrmse,
 }
 
 # BCELoss = T.nn.BCELoss()

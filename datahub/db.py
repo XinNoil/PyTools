@@ -1,47 +1,68 @@
 import os,copy
 import numpy as np
-from datahub.wifi import get_bssids, process_rssis, WiFiData, set_bssids, get_ssids, normalize_rssis
+from datahub.wifi import get_bssids, process_rssis, WiFiData, set_bssids, get_ssids, normalize_rssis, unnormalize_rssis
 from mtools import list_mask,list_con,load_h5,save_h5,load_json,save_json,csvread,np_avg,np_intersect,np_repeat
 
+class Setting(object):
+    def __init__(self, cdns, wfiles): 
+        self.cdns = cdns
+        self.wfiles = wfiles
+
 class DB(object):
-    def __init__(self, data_path, data_name, dbtype='db', cdns=[], wfiles=[], avg=False, bssids=[], save_h5_file=False, event=False, is_load_h5=True, start_time=-4):
-        self.data_path = data_path
-        self.data_name = data_name
-        self.dbtype = dbtype
-        self.start_time = start_time
-        print(data_name)
-        if os.path.exists(self.save_name(avg)) and is_load_h5:
-            source = 'h5'
-            print('%s is using %s file'%(dbtype, source))
-            self.__dict__ = load_h5(self.save_name(avg))
+    # bssids, cdns, rssis, mags, RecordsNums
+    def __init__(self, data_path='', data_name='', dbtype='db', cdns=[], wfiles=[], avg=False, bssids=[], save_h5_file=False, event=False, is_load_h5=True, start_time=0, rssis=[], mags=[], RecordsNums=[], filename=''):
+        if len(rssis):
+            self.bssids = bssids
+            self.cdns = cdns
+            self.rssis = rssis
+            self.mags = mags
+            if len(RecordsNums):
+                self.RecordsNums = RecordsNums
+            else:
+                self.RecordsNums = np.ones(len(self))
+        else:
             self.data_path = data_path
-            if bssids:
+            self.data_name = data_name
+            self.dbtype = dbtype
+            self.start_time = start_time
+            print(data_name)
+            if os.path.exists(filename) and is_load_h5:
+                print('load h5 file: %s'%filename)
+                self.__dict__ = load_h5(filename)
                 self.set_bssids(bssids)
-        elif os.path.exists(self.csv_name()):
-            source = 'csv'
-            print('%s is using %s file'%(dbtype, source))
-            self.load_csv(avg)
-        elif os.path.exists(self.zip_name()):
-            source = 'zip'
-            print('%s is using %s file'%(dbtype, source))
-            self.cdns = np.array(cdns)
-            self.wfiles = wfiles
-            self.process_data(bssids, avg, save_h5_file, event)
+            elif os.path.exists(self.save_name(avg)) and is_load_h5:
+                print('load h5 file: %s'%self.save_name(avg))
+                self.__dict__ = load_h5(self.save_name(avg))
+                self.set_bssids(bssids)
+            elif os.path.exists(self.csv_name()):
+                print('load csv file: %s'%self.csv_name())
+                self.load_csv(avg)
+                self.set_bssids(bssids)
+            elif os.path.exists(self.zip_name()):
+                print('load csv file: %s'%self.zip_name())
+                self.cdns = np.array(cdns)
+                self.wfiles = wfiles
+                self.process_data(bssids, avg, save_h5_file, event)
         if hasattr(self, 'rssis'):
             print('len: %d'%len(self))
 
     def __len__(self):
-        return self.rssis.shape[0]
+        return self.rssis.shape[0]  
 
     def load_csv(self, avg):
         desc = load_json(os.path.join(self.data_path, '%s_data_description.json'%self.data_name))
         self.bssids = load_json(os.path.join(self.data_path, '%s_bssids.json'%self.data_name))
+        if 'rssi_mask' in desc:
+            self.bssids = list_mask(self.bssids, desc['rssi_mask'])
         data = csvread(self.csv_name())
         self.cdns  = np.round(data[:, 0: desc['cdn_dim']]+np.array(desc['cdn_min']), 4)
         self.mags  = data[:, desc['cdn_dim']:desc['cdn_dim']+desc['mag_dim']]
         self.rssis = data[:, desc['cdn_dim']+desc['mag_dim']:desc['cdn_dim']+desc['mag_dim']+desc['rssi_dim']]
         if avg:
             self.RecordsNums = np.array(desc['RecordsNums'])
+            if 'intv' in self.csv_name():
+                mask = csvread(str.replace(str.replace(self.csv_name(), 'intv', 'mask_intv'), '.csv', '_fp.csv')).astype(bool)
+                self.RecordsNums = self.RecordsNums[mask]
             self.avg()
         else:
             self.RecordsNums = np.ones(self.rssis.shape[0])
@@ -177,8 +198,9 @@ class DB(object):
                     self.__dict__[k]=v[mask]
     
     def set_bssids(self, bssids):
-        self.rssis = set_bssids(self.rssis, self.bssids, bssids)
-        self.bssids = bssids
+        if bssids:
+            self.rssis = set_bssids(self.rssis, self.bssids, bssids)
+            self.bssids = bssids
     
     def is_cdns_equal(self, cdns):
         if self.cdns.shape[0]!=cdns.shape[0]:
@@ -188,9 +210,9 @@ class DB(object):
     def get_feature(self, feature_mode='R'):
         if feature_mode == 'R':
             return normalize_rssis(self.rssis) if np.max(self.rssis)<0 else self.rssis
-        elif feature_mode is 'MM':
+        elif feature_mode == 'MM':
             return self.mags
-        elif feature_mode is 'RMM':
+        elif feature_mode == 'RMM':
             return np.hstack((self.mags, normalize_rssis(self.rssis) if np.max(self.rssis)<0 else self.rssis))
     
     def get_label(self, label_mode):
@@ -224,6 +246,14 @@ class DBs(object):
     def __init__(self, dbs):
         self.dbs = dbs
     
+    @property
+    def rssis(self):
+        return np.vstack(tuple([db.rssis for db in self.dbs]))
+    
+    @property
+    def cdns(self):
+        return np.vstack(tuple([db.cdns for db in self.dbs]))
+
     def __len__(self):
         return sum([len(db) for db in self.dbs])
     
@@ -253,7 +283,22 @@ def reduce_dbs(db1, db2):
     else:
         print('reduce_dbs(%s_%s, %s_%s): equal' %(db1.data_name, db2.dbtype, db2.data_name, db2.dbtype))
 
-class Setting(object):
-    def __init__(self, cdns, wfiles): 
-        self.cdns = cdns
-        self.wfiles = wfiles
+from scipy.spatial.distance import cdist
+
+def set_value(rssi, m, v):
+    rssi[m] = v
+    return rssi
+
+def get_filtered_gen(fp, gen, rss_range=[0,1], k=3):
+    gen.rssis = cut_rssis(gen.rssis)
+    D = cdist(np.array(gen.rssis), np.array(fp.rssis))
+    inds = np.argsort(D)
+    k_inds = inds[:, :k]
+    masks= [np.all(fp.rssis[k_ind] == rss_range[0], 0) for k_ind in k_inds]
+    gen.rssis = np.vstack([set_value(rssi, mask, rss_range[0]) for mask, rssi in zip(masks, gen.rssis)])
+    return gen
+
+def cut_rssis(rssis, rss_range=[0,1]):
+    rssis[rssis<rss_range[0]] = rss_range[0]
+    rssis[rssis>rss_range[1]] = rss_range[1]
+    return rssis

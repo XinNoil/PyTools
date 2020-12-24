@@ -3,7 +3,7 @@ import numpy as np
 from scipy.spatial.distance import cdist
 
 def knn(fp, td, k=3):
-    k = min(k, len(fp.rssis))
+    k = int(min(k, len(fp.rssis)))
     D = cdist(np.array(td.rssis), np.array(fp.rssis))
     ind = np.argsort(D)
     k_ind = ind[:, :k]

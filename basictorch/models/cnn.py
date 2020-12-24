@@ -69,12 +69,11 @@ class CNN(Base):
         for i, con_in, con_out in zip(range(len(self.cons)-1), self.cons[:-1], self.cons[1:]):
             self.sequential.add_module('conv%d'%i, get_block(con_in, con_out, self.activations, self.pooling, self.norm_layer))
         self.sequential.add_module('flatten', torch.nn.modules.Flatten())
-        if self.layer_units:
-            for i in range(len(self.layer_units)-1):
-                self.sequential.add_module('layer%d'%(i), nn.Linear(self.layer_units[i], self.layer_units[i+1]))
-                self.sequential.add_module('%s%d'%(self.activations, i), act_modules[self.activations])
-            if self.dim_y:
-                self.sequential.add_module('out_layer', nn.Linear(self.layer_units[-1], self.dim_y))
+        for i in range(len(self.layer_units)-1):
+            self.sequential.add_module('layer%d'%(i), nn.Linear(self.layer_units[i], self.layer_units[i+1]))
+            self.sequential.add_module('%s%d'%(self.activations, i), act_modules[self.activations])
+        if self.dim_y:
+            self.sequential.add_module('out_layer', nn.Linear(self.layer_units[-1], self.dim_y))
         if self.out_activation:
             self.sequential.add_module(self.out_activation, act_modules[self.out_activation])
         if self.spectral:

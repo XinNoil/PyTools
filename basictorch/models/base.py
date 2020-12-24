@@ -56,10 +56,10 @@ class Base(nn.Module): #, metaclass=abc.ABCMeta
         print('\n\n--- START TRAINING ---\n\n')
         t.set_weight_file(self)
         self.history = {}
-        self.check_validation()
         self.train_fit_time = t.time.process_time()
         if self.initialize:
             self.initialize_model()
+        self.check_validation()
     
     def on_train_end(self):
         self.fit_time = t.time.process_time() - self.train_fit_time
