@@ -39,7 +39,7 @@ class DB(object):
                 self.load_csv(avg)
                 self.set_bssids(bssids)
             elif os.path.exists(self.zip_name()):
-                print('load csv file: %s'%self.zip_name())
+                print('load zip file: %s'%self.zip_name())
                 self.cdns = np.array(cdns)
                 self.wfiles = wfiles
                 self.process_data(bssids, avg, save_h5_file, event)
@@ -59,14 +59,20 @@ class DB(object):
         self.mags  = data[:, desc['cdn_dim']:desc['cdn_dim']+desc['mag_dim']]
         self.rssis = data[:, desc['cdn_dim']+desc['mag_dim']:desc['cdn_dim']+desc['mag_dim']+desc['rssi_dim']]
         if avg:
-            self.RecordsNums = np.array(desc['RecordsNums'])
-            if 'intv' in self.csv_name():
-                mask = csvread(str.replace(str.replace(self.csv_name(), 'intv', 'mask_intv'), '.csv', '_fp.csv')).astype(bool)
-                self.RecordsNums = self.RecordsNums[mask]
+            self.get_RecordsNums(desc)
             self.avg()
         else:
-            self.RecordsNums = np.ones(self.rssis.shape[0])
+            if 'training' in self.dbtype:
+                self.get_RecordsNums(desc)
+            else:
+                self.RecordsNums = np.ones(self.rssis.shape[0])
         save_h5(self.save_name(avg), self)
+    
+    def get_RecordsNums(self, desc):
+        self.RecordsNums = np.array(desc['RecordsNums'])
+        if 'intv' in self.csv_name():
+            mask = csvread(str.replace(str.replace(self.csv_name(), 'intv', 'mask_intv'), '.csv', '_fp.csv')).astype(bool)
+            self.RecordsNums = self.RecordsNums[mask]
     
     def avg(self):
         if np.sum(self.RecordsNums) != self.cdns.shape[0]:

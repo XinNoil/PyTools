@@ -1,4 +1,4 @@
-import os, sys, time, torch, argparse
+import os, sys, time, torch, argparse, math
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
@@ -35,7 +35,8 @@ def get_out_dir(args):
     if hasattr(args, 'feature_mode'):
         out_dir = '%s_%s' % (out_dir, args.feature_mode)
     if hasattr(args, 'sub_output'):
-        out_dir = '%s_%s' % (out_dir, args.sub_output)
+        if args.sub_output is not None:
+            out_dir = '%s_%s' % (out_dir, args.sub_output)
     return check_dir(os.path.join('output', args.output, out_dir))
 
 def get_gen_dir(args):
@@ -66,6 +67,11 @@ def initialize_model(model):
             torch.nn.init.uniform_(m.weight, -0.05, 0.05)
         # elif issubclass(type(m), (torch.nn.Conv2d, torch.nn.ConvTranspose2d)):
         #     torch.nn.init.xavier_uniform(m.weight)
+
+def reset_parameters(model):
+    for m in model.modules():
+        if hasattr(m, 'reset_parameters'):
+            m.reset_parameters()
 
 def spectral_norm(m):
     if isinstance(m, (torch.nn.Conv2d, torch.nn.ConvTranspose2d, torch.nn.Linear)):
