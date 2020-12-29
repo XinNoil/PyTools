@@ -55,7 +55,8 @@ class DB(object):
         if 'rssi_mask' in desc:
             self.bssids = list_mask(self.bssids, desc['rssi_mask'])
         data = csvread(self.csv_name())
-        self.cdns  = np.round(data[:, 0: desc['cdn_dim']]+np.array(desc['cdn_min']), 4)
+        self.cdns  = np.round(data[:, 0: desc['cdn_dim']], 4)
+        self.cdns_min = np.array(desc['cdn_min'])
         self.mags  = data[:, desc['cdn_dim']:desc['cdn_dim']+desc['mag_dim']]
         self.rssis = data[:, desc['cdn_dim']+desc['mag_dim']:desc['cdn_dim']+desc['mag_dim']+desc['rssi_dim']]
         if avg:

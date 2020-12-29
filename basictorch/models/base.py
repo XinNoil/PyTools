@@ -180,10 +180,13 @@ class Base(nn.Module): #, metaclass=abc.ABCMeta
                 self.history['loss'][-1], self.fit_time])
 
 class SemiBase(Base):
+    def on_epoch_begin(self, epoch):
+        super().on_epoch_begin(epoch)
+        self.data_loader = self.datasets.get_train_loader()
+        self.unlab_loader = self.datasets.get_unlab_loader(len(self.data_loader))
+
     def train_on_epoch(self):
-        data_loader = self.datasets.get_train_loader()
-        unlab_loader = self.datasets.get_unlab_loader(len(data_loader))
-        for (b, batch_data_l),(b, batch_data_u) in zip(enumerate(data_loader), enumerate(unlab_loader)):
+        for (b, batch_data_l),(b, batch_data_u) in zip(enumerate(self.data_loader), enumerate(self.unlab_loader)):
             batch_data = batch_data_l+batch_data_u
             losses = self.train_on_batch(b, batch_data)
             t.print_batch(self.epoch, self.epochs, b, self.batch_size, self.num_data, losses)
