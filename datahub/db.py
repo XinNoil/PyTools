@@ -297,12 +297,12 @@ def set_value(rssi, m, v):
     return rssi
 
 def get_filtered_gen(fp, gen, rss_range=[0,1], k=3):
-    gen.rssis = cut_rssis(gen.rssis)
     D = cdist(np.array(gen.rssis), np.array(fp.rssis))
     inds = np.argsort(D)
     k_inds = inds[:, :k]
     masks= [np.all(fp.rssis[k_ind] == rss_range[0], 0) for k_ind in k_inds]
     gen.rssis = np.vstack([set_value(rssi, mask, rss_range[0]) for mask, rssi in zip(masks, gen.rssis)])
+    gen.rssis = cut_rssis(gen.rssis)
     return gen
 
 def cut_rssis(rssis, rss_range=[0,1]):

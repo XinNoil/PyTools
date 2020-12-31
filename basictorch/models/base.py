@@ -190,10 +190,12 @@ class SemiBase(Base):
             batch_data = batch_data_l+batch_data_u
             losses = self.train_on_batch(b, batch_data)
             t.print_batch(self.epoch, self.epochs, b, self.batch_size, self.num_data, losses)
-
-    def forward(self, x, x_u):
-        return self.sequential(x)
-
+    
+    def get_dataset_losses(self, dataset):
+        with torch.no_grad():
+            self.train_mode(False)
+            return self.get_losses(tuple(dataset.tensors)+tuple(self.datasets.unlab_dataset.tensors))
+    
     def get_losses(self, batch_data):
         inputs, labels, unlabs = batch_data
         outputs = self(inputs, unlabs)
@@ -202,10 +204,8 @@ class SemiBase(Base):
             losses[r] = self.loss_funcs[r](outputs, labels)
         return losses
     
-    def get_dataset_losses(self, dataset):
-        with torch.no_grad():
-            self.train_mode(False)
-            return self.get_losses(tuple(dataset.tensors)+tuple(self.datasets.unlab_dataset.tensors))
+    def forward(self, x, x_u):
+        return self.sequential(x)
 
 acts = {
     'relu':torch.relu,
