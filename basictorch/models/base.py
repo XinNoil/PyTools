@@ -189,7 +189,10 @@ class SemiBase(Base):
         for (b, batch_data_l),(b, batch_data_u) in zip(enumerate(self.data_loader), enumerate(self.unlab_loader)):
             batch_data = batch_data_l+batch_data_u
             losses = self.train_on_batch(b, batch_data)
-            t.print_batch(self.epoch, self.epochs, b, self.batch_size, self.num_data, losses)
+            if self.args.print_batch:
+                t.print_batch(self.epoch, self.epochs, b, self.batch_size, self.num_data, losses)
+            else:
+                t.print_batch(self.epoch, self.epochs, b, self.batch_size, self.num_data, losses)
     
     def get_dataset_losses(self, dataset):
         with torch.no_grad():
