@@ -98,8 +98,8 @@ def unfreeze_optimizer(optimizer):
         for param in param_group['params']:
             param.requires_grad = True
 
-def n2t(num):
-    return torch.FloatTensor(num).to(device)
+def n2t(num, tensortype=torch.FloatTensor):
+    return tensortype(num).to(device)
 
 def t2n(tensor):
     return tensor.detach().cpu().numpy()

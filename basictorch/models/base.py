@@ -171,13 +171,17 @@ class Base(nn.Module): #, metaclass=abc.ABCMeta
 
     def save_evaluate(self):
         if self.validation:
-            t.save_evaluate(self.args.output, self.name, 'data_ver,data_name,exp_no,epochs,batch_size,%s,%s,fit_time\n' % (self.monitor, self.test_monitor),\
-                [self.args.data_ver, self.args.data_name, self.args.exp_no, self.epochs,self.batch_size,\
-                self.monitor_losses[self.monitor].item(), self.monitor_losses[self.test_monitor].item() if self.test_monitor in self.monitor_losses else 'None', self.fit_time])
+            head = 'data_ver,data_name,exp_no,epochs,batch_size,%s,%s,fit_time\n' % (self.monitor, self.test_monitor)
+            varList = [self.args.data_ver, self.args.data_name, self.args.exp_no, self.epochs,self.batch_size,\
+                self.monitor_losses[self.monitor].item(), self.monitor_losses[self.test_monitor].item() if self.test_monitor in self.monitor_losses else 'None', self.fit_time]
         else:
-            t.save_evaluate(self.args.output, self.name, 'data_ver,data_name,exp_no,epochs,batch_size,loss,fit_time\n',\
-                [self.args.data_ver, self.args.data_name, self.args.exp_no, self.epochs,self.batch_size,\
-                self.history['loss'][-1], self.fit_time])
+            head = 'data_ver,data_name,exp_no,epochs,batch_size,loss,fit_time\n'
+            varList = [self.args.data_ver, self.args.data_name, self.args.exp_no, self.epochs,self.batch_size,\
+                self.history['loss'][-1], self.fit_time]
+        if hasattr(self.args, 'run_i'):
+            head = 'run_i,'+head
+            varList.insert(0, self.args.run_i)
+        t.save_evaluate(self.args.output, self.name, head, varList)
 
 class SemiBase(Base):
     def on_epoch_begin(self, epoch):
