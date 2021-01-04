@@ -98,8 +98,8 @@ def unfreeze_optimizer(optimizer):
         for param in param_group['params']:
             param.requires_grad = True
 
-def n2t(num, tensortype=torch.FloatTensor):
-    return tensortype(num).to(device)
+def n2t(num, tensortype=torch.FloatTensor, gpu=True):
+    return tensortype(num).to(device) if gpu else tensortype(num)
 
 def t2n(tensor):
     return tensor.detach().cpu().numpy()
@@ -264,3 +264,18 @@ def copy_params(s, t, inds=None, indt=None, reverse=False):
                     else:
                         lt.weight.copy_(ls.weight)
                         lt.bias.copy_(ls.bias)
+
+def get_sub_batch_data(batch_data, max_sub_size=5e3):
+    batch_sizes = [data.shape[0] for data in batch_data]
+    sub_num = max([batch_size/max_sub_size for batch_size in batch_sizes])
+    sub_sizes = [int(batch_size/sub_num) for batch_size in batch_sizes]
+    for b in range(int(np.ceil(sub_num))):
+        yield tuple(data[b*sub_size:(b+1)*sub_size] for sub_size,data in zip(sub_sizes,batch_data))
+
+def merge_losses(losses_list):
+    losses = losses_list[0]
+    for loss in losses_list[0]:
+        for losses_ in losses_list[1:]:
+            losses[loss] += losses_[loss]
+        losses[loss] /= len(losses_list)
+    return losses

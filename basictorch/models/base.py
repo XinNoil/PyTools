@@ -79,13 +79,16 @@ class Base(nn.Module): #, metaclass=abc.ABCMeta
     def train_on_epoch(self):
         for b, batch_data in enumerate(self.data_loader):
             losses = self.train_on_batch(b, batch_data)
-            if hasattr(self.args, 'print_batch'):
-                if self.args.print_batch:
-                    t.print_batch(self.epoch, self.epochs, b, self.batch_size, self.num_data, losses)
-                else:
-                    t.sys.stdout.flush()
-            else:
+            self.print_batch(b, losses)
+    
+    def print_batch(self, b, losses):
+        if hasattr(self.args, 'print_batch'):
+            if self.args.print_batch:
                 t.print_batch(self.epoch, self.epochs, b, self.batch_size, self.num_data, losses)
+            else:
+                t.sys.stdout.flush()
+        else:
+            t.print_batch(self.epoch, self.epochs, b, self.batch_size, self.num_data, losses)
 
     def on_epoch_end(self):
         epoch_time = t.time.process_time() - self.epoch_start_time
@@ -188,20 +191,27 @@ class SemiBase(Base):
         super().on_epoch_begin(epoch)
         self.data_loader = self.datasets.get_train_loader()
         self.unlab_loader = self.datasets.get_unlab_loader(len(self.data_loader))
+    
+    def on_epoch_end(self):
+        super().on_epoch_end()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
     def train_on_epoch(self):
         for (b, batch_data_l),(b, batch_data_u) in zip(enumerate(self.data_loader), enumerate(self.unlab_loader)):
             batch_data = batch_data_l+batch_data_u
             losses = self.train_on_batch(b, batch_data)
-            if self.args.print_batch:
-                t.print_batch(self.epoch, self.epochs, b, self.batch_size, self.num_data, losses)
-            else:
-                t.print_batch(self.epoch, self.epochs, b, self.batch_size, self.num_data, losses)
+            self.print_batch(b, losses)
     
     def get_dataset_losses(self, dataset):
         with torch.no_grad():
             self.train_mode(False)
-            return self.get_losses(tuple(dataset.tensors)+tuple(self.datasets.unlab_dataset.tensors))
+            batch_data = tuple(dataset.tensors)+tuple(self.datasets.get_unlab_dataset(dataset).tensors)
+            losses_list = []
+            for sub_batch_data in t.get_sub_batch_data(batch_data):
+                losses_list.append(self.get_losses(sub_batch_data))
+            losses = t.merge_losses(losses_list)
+            return losses
     
     def get_losses(self, batch_data):
         inputs, labels, unlabs = batch_data
