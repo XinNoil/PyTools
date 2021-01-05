@@ -7,6 +7,11 @@ class Setting(object):
     def __init__(self, cdns, wfiles): 
         self.cdns = cdns
         self.wfiles = wfiles
+        self.print()
+    
+    def print(self):
+        print(self.cdns.shape)
+        print(len(self.wfiles))
 
 class DB(object):
     # bssids, cdns, rssis, mags, RecordsNums
