@@ -72,3 +72,14 @@ def get_zip_filenames(zip_src):
         return fz.namelist()
     else:
         return False
+
+def write_file(file_name, str_list):
+    file_=open(file_name, 'w')
+    file_.writelines([s+'\n' for s in str_list])
+    file_.close()
+
+def read_file(file_name):
+    file_=open(file_name, 'r')
+    str_list = file_.read().splitlines()
+    file_.close()
+    return str_list

@@ -1,4 +1,4 @@
-import os, sys, time, torch, argparse
+import os, sys, time, torch, argparse, math
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
@@ -35,7 +35,8 @@ def get_out_dir(args):
     if hasattr(args, 'feature_mode'):
         out_dir = '%s_%s' % (out_dir, args.feature_mode)
     if hasattr(args, 'sub_output'):
-        out_dir = '%s_%s' % (out_dir, args.sub_output)
+        if args.sub_output is not None:
+            out_dir = '%s_%s' % (out_dir, args.sub_output)
     return check_dir(os.path.join('output', args.output, out_dir))
 
 def get_gen_dir(args):
@@ -67,6 +68,11 @@ def initialize_model(model):
         # elif issubclass(type(m), (torch.nn.Conv2d, torch.nn.ConvTranspose2d)):
         #     torch.nn.init.xavier_uniform(m.weight)
 
+def reset_parameters(model):
+    for m in model.modules():
+        if hasattr(m, 'reset_parameters'):
+            m.reset_parameters()
+
 def spectral_norm(m):
     if isinstance(m, (torch.nn.Conv2d, torch.nn.ConvTranspose2d, torch.nn.Linear)):
         return torch.nn.utils.spectral_norm(m)
@@ -92,8 +98,8 @@ def unfreeze_optimizer(optimizer):
         for param in param_group['params']:
             param.requires_grad = True
 
-def n2t(num):
-    return torch.FloatTensor(num).to(device)
+def n2t(num, tensortype=torch.FloatTensor, gpu=True):
+    return tensortype(num).to(device) if gpu else tensortype(num)
 
 def t2n(tensor):
     return tensor.detach().cpu().numpy()
@@ -258,3 +264,18 @@ def copy_params(s, t, inds=None, indt=None, reverse=False):
                     else:
                         lt.weight.copy_(ls.weight)
                         lt.bias.copy_(ls.bias)
+
+def get_sub_batch_data(batch_data, max_sub_size=5e3):
+    batch_sizes = [data.shape[0] for data in batch_data]
+    sub_num = max([batch_size/max_sub_size for batch_size in batch_sizes])
+    sub_sizes = [int(batch_size/sub_num) for batch_size in batch_sizes]
+    for b in range(int(np.ceil(sub_num))):
+        yield tuple(data[b*sub_size:(b+1)*sub_size] for sub_size,data in zip(sub_sizes,batch_data))
+
+def merge_losses(losses_list):
+    losses = losses_list[0]
+    for loss in losses_list[0]:
+        for losses_ in losses_list[1:]:
+            losses[loss] += losses_[loss]
+        losses[loss] /= len(losses_list)
+    return losses

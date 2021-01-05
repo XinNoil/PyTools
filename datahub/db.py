@@ -44,7 +44,7 @@ class DB(object):
                 self.load_csv(avg)
                 self.set_bssids(bssids)
             elif os.path.exists(self.zip_name()):
-                print('load csv file: %s'%self.zip_name())
+                print('load zip file: %s'%self.zip_name())
                 self.cdns = np.array(cdns)
                 self.wfiles = wfiles
                 self.process_data(bssids, avg, save_h5_file, event)
@@ -60,18 +60,25 @@ class DB(object):
         if 'rssi_mask' in desc:
             self.bssids = list_mask(self.bssids, desc['rssi_mask'])
         data = csvread(self.csv_name())
-        self.cdns  = np.round(data[:, 0: desc['cdn_dim']]+np.array(desc['cdn_min']), 4)
+        self.cdns  = np.round(data[:, 0: desc['cdn_dim']], 4)
+        self.cdns_min = np.array(desc['cdn_min'])
         self.mags  = data[:, desc['cdn_dim']:desc['cdn_dim']+desc['mag_dim']]
         self.rssis = data[:, desc['cdn_dim']+desc['mag_dim']:desc['cdn_dim']+desc['mag_dim']+desc['rssi_dim']]
         if avg:
-            self.RecordsNums = np.array(desc['RecordsNums'])
-            if 'intv' in self.csv_name():
-                mask = csvread(str.replace(str.replace(self.csv_name(), 'intv', 'mask_intv'), '.csv', '_fp.csv')).astype(bool)
-                self.RecordsNums = self.RecordsNums[mask]
+            self.get_RecordsNums(desc)
             self.avg()
         else:
-            self.RecordsNums = np.ones(self.rssis.shape[0])
+            if 'training' in self.dbtype:
+                self.get_RecordsNums(desc)
+            else:
+                self.RecordsNums = np.ones(self.rssis.shape[0])
         save_h5(self.save_name(avg), self)
+    
+    def get_RecordsNums(self, desc):
+        self.RecordsNums = np.array(desc['RecordsNums'])
+        if 'intv' in self.csv_name():
+            mask = csvread(str.replace(str.replace(self.csv_name(), 'intv', 'mask_intv'), '.csv', '_fp.csv')).astype(bool)
+            self.RecordsNums = self.RecordsNums[mask]
     
     def avg(self):
         if np.sum(self.RecordsNums) != self.cdns.shape[0]:
@@ -295,12 +302,12 @@ def set_value(rssi, m, v):
     return rssi
 
 def get_filtered_gen(fp, gen, rss_range=[0,1], k=3):
-    gen.rssis = cut_rssis(gen.rssis)
     D = cdist(np.array(gen.rssis), np.array(fp.rssis))
     inds = np.argsort(D)
     k_inds = inds[:, :k]
     masks= [np.all(fp.rssis[k_ind] == rss_range[0], 0) for k_ind in k_inds]
     gen.rssis = np.vstack([set_value(rssi, mask, rss_range[0]) for mask, rssi in zip(masks, gen.rssis)])
+    gen.rssis = cut_rssis(gen.rssis)
     return gen
 
 def cut_rssis(rssis, rss_range=[0,1]):

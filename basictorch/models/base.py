@@ -74,11 +74,20 @@ class Base(nn.Module): #, metaclass=abc.ABCMeta
         self.train_mode(True)
         self.epoch_start_time = t.time.process_time()
         self.epoch = epoch
+        self.data_loader = self.datasets.get_train_loader()
     
     def train_on_epoch(self):
-        data_loader = self.datasets.get_train_loader()
-        for b, batch_data in enumerate(data_loader):
+        for b, batch_data in enumerate(self.data_loader):
             losses = self.train_on_batch(b, batch_data)
+            self.print_batch(b, losses)
+    
+    def print_batch(self, b, losses):
+        if hasattr(self.args, 'print_batch'):
+            if self.args.print_batch:
+                t.print_batch(self.epoch, self.epochs, b, self.batch_size, self.num_data, losses)
+            else:
+                t.sys.stdout.flush()
+        else:
             t.print_batch(self.epoch, self.epochs, b, self.batch_size, self.num_data, losses)
 
     def on_epoch_end(self):
@@ -113,6 +122,7 @@ class Base(nn.Module): #, metaclass=abc.ABCMeta
         self.num_data = len(datasets.train_dataset)
 
     def initialize_model(self):
+        t.reset_parameters(self)
         t.initialize_model(self)
 
     def evaluate(self):
@@ -164,13 +174,55 @@ class Base(nn.Module): #, metaclass=abc.ABCMeta
 
     def save_evaluate(self):
         if self.validation:
-            t.save_evaluate(self.args.output, self.name, 'data_ver,data_name,exp_no,epochs,batch_size,%s,%s,fit_time\n' % (self.monitor, self.test_monitor),\
-                [self.args.data_ver, self.args.data_name, self.args.exp_no, self.epochs,self.batch_size,\
-                self.monitor_losses[self.monitor].item(), self.monitor_losses[self.test_monitor].item() if self.test_monitor in self.monitor_losses else 'None', self.fit_time])
+            head = 'data_ver,data_name,exp_no,epochs,batch_size,%s,%s,fit_time\n' % (self.monitor, self.test_monitor)
+            varList = [self.args.data_ver, self.args.data_name, self.args.exp_no, self.epochs,self.batch_size,\
+                self.monitor_losses[self.monitor].item(), self.monitor_losses[self.test_monitor].item() if self.test_monitor in self.monitor_losses else 'None', self.fit_time]
         else:
-            t.save_evaluate(self.args.output, self.name, 'data_ver,data_name,exp_no,epochs,batch_size,loss,fit_time\n',\
-                [self.args.data_ver, self.args.data_name, self.args.exp_no, self.epochs,self.batch_size,\
-                self.history['loss'][-1], self.fit_time])
+            head = 'data_ver,data_name,exp_no,epochs,batch_size,loss,fit_time\n'
+            varList = [self.args.data_ver, self.args.data_name, self.args.exp_no, self.epochs,self.batch_size,\
+                self.history['loss'][-1], self.fit_time]
+        if hasattr(self.args, 'run_i'):
+            head = 'run_i,'+head
+            varList.insert(0, self.args.run_i)
+        t.save_evaluate(self.args.output, self.name, head, varList)
+
+class SemiBase(Base):
+    def on_epoch_begin(self, epoch):
+        super().on_epoch_begin(epoch)
+        self.data_loader = self.datasets.get_train_loader()
+        self.unlab_loader = self.datasets.get_unlab_loader(len(self.data_loader))
+    
+    def on_epoch_end(self):
+        super().on_epoch_end()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+    def train_on_epoch(self):
+        for (b, batch_data_l),(b, batch_data_u) in zip(enumerate(self.data_loader), enumerate(self.unlab_loader)):
+            batch_data = batch_data_l+batch_data_u
+            losses = self.train_on_batch(b, batch_data)
+            self.print_batch(b, losses)
+    
+    def get_dataset_losses(self, dataset):
+        with torch.no_grad():
+            self.train_mode(False)
+            batch_data = tuple(dataset.tensors)+tuple(self.datasets.get_unlab_dataset(dataset).tensors)
+            losses_list = []
+            for sub_batch_data in t.get_sub_batch_data(batch_data):
+                losses_list.append(self.get_losses(sub_batch_data))
+            losses = t.merge_losses(losses_list)
+            return losses
+    
+    def get_losses(self, batch_data):
+        inputs, labels, unlabs = batch_data
+        outputs = self(inputs, unlabs)
+        losses={}
+        for r in self.loss_funcs:
+            losses[r] = self.loss_funcs[r](outputs, labels)
+        return losses
+    
+    def forward(self, x, x_u):
+        return self.sequential(x)
 
 acts = {
     'relu':torch.relu,

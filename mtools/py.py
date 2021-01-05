@@ -18,3 +18,7 @@ def intersection(a, b):
     i_a = [a.index(x) for x in c]
     i_b = [b.index(x) for x in c]
     return c, i_a, i_b
+
+def for_print(l):
+    for x in l:
+        print(x)
