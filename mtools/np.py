@@ -28,3 +28,6 @@ def np_union_shuffle(a, b):
 
 def np_repeat(data, nums):
     return np.vstack(tuple([np.array(np.tile(row, (s, 1))) for row, s in zip(data, nums)]))
+
+def rmse(a, b):
+    return np.sqrt(np.mean((a-b)**2, axis=-1))
