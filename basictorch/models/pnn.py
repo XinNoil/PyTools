@@ -48,28 +48,6 @@ class PNN(Base):
         err = euclidean_error(y_test, y_mean)
         output_tensor = torch.cat((y_test, y_mean, y_var, err.view(-1, 1)), dim=-1)
         mt.csvwrite(t.get_filename(self.args, 'test_result','csv'), output_tensor.detach().cpu().numpy())
-        
-    
-    # def train_on_batch(self, b, batch_data):
-    #     inputs, labels = batch_data
-    #     self.mean_optimizer.zero_grad()
-    #     mean = self.mean_dnn(inputs)
-    #     with torch.no_grad():
-    #         var = self.var_dnn(inputs)
-    #     loss = self.loss_funcs['loss']((mean, var), labels)
-    #     loss.backward()
-    #     self.mean_optimizer.step()
-
-    #     self.var_optimizer.zero_grad()
-    #     var = self.var_dnn(inputs)
-    #     with torch.no_grad():
-    #         mean = self.mean_dnn(inputs)
-    #     loss = self.loss_funcs['loss']((mean, var), labels)
-    #     loss.backward()
-    #     self.var_optimizer.step()
-
-    #     return self.get_losses(batch_data)
-
 
 models={
     'dnn':DNN,
