@@ -2,6 +2,9 @@
 ## Description
 python tools
 
+## Project Location
+- Deep: `/home/wjk/Workspace/PyTools`
+
 ## Usage
 ### How to use PyTools anywhere?
 
@@ -19,6 +22,9 @@ from datahub.db import DB
 ```
 
 ## Modules
+- mtools: general tools
+- datahub: specific tools for indoor localization databases
+- basictorch: specific tools for [BasicTorch](http://tjunet.top/gitbucket/XinNoil/BasicTorch)
 
 ### mtools
 
