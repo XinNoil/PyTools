@@ -157,10 +157,12 @@ class ResNet(Base):
         if self.avgpool:
             self.sequential.add_module('avgpool', nn.AdaptiveAvgPool2d((1, 1)))
             self.sequential.add_module('flatten', torch.nn.modules.Flatten())
-            self.sequential.add_module('out_layer', nn.Linear(self.cons[2] * self.block.expansion, self.dim_y))
+            if self.dim_y:
+                self.sequential.add_module('out_layer', nn.Linear(self.cons[2] * self.block.expansion, self.dim_y))
         else:
             self.sequential.add_module('flatten', torch.nn.modules.Flatten())
-            self.sequential.add_module('out_layer', nn.Linear(self.cons[2] * self.block.expansion * self.dim_co * self.dim_co, self.dim_y))
+            if self.dim_y:
+                self.sequential.add_module('out_layer', nn.Linear(self.cons[2] * self.block.expansion * self.dim_co * self.dim_co, self.dim_y))
         if self.out_activation:
             self.sequential.add_module(self.out_activation, act_modules[self.out_activation])
         if self.spectral:

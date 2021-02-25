@@ -74,6 +74,8 @@ class CNN(Base):
             self.sequential.add_module('%s%d'%(self.activations, i), act_modules[self.activations])
         if self.dim_y:
             self.sequential.add_module('out_layer', nn.Linear(self.layer_units[-1], self.dim_y))
+        else:
+            self.dim_y = int(self.cons[-1]*(self.dim/4)**2)
         if self.out_activation:
             self.sequential.add_module(self.out_activation, act_modules[self.out_activation])
         if self.spectral:
