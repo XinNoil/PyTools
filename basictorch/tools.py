@@ -53,6 +53,9 @@ def get_exp_no(args, e):
             return args.data_postfix + 'e' + str(e)
     return 'e' + str(e)
 
+def get_start_exp_no(exp_no):
+    return 0 if exp_no == '' else int(exp_no)
+    
 # torch models tools
 def get_layers(input_dim, layer_units, Linear = torch.nn.Linear):
     layers = torch.nn.ModuleList()

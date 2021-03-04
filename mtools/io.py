@@ -23,7 +23,8 @@ def toobj(strjson):
 
 def load_json(filename):
     json_file=open(filename, 'r')
-    json_string=json_file.readline()
+    json_strings=json_file.readlines()
+    json_string=''.join(json_strings)
     json_file.close()
     return json.loads(json_string)
 

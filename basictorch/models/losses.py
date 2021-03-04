@@ -60,6 +60,7 @@ def nig_reg(y, gamma, v, alpha):
     reg = T.abs(y-gamma)*evi
     return T.mean(reg)
 
+ee = euclidean_error
 mee = mean_euclidean_error
 mrl = mean_rec_loss
 mgl = mean_gen_loss
@@ -70,6 +71,7 @@ rmse = root_mean_square_error
 mrmse = mean_root_mean_square_error
 
 loss_funcs={
+    'ee':ee,
     'mee':mee,
     'mrl':mrl,
     'mgl':mgl,

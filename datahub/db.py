@@ -279,6 +279,14 @@ class DBs(object):
     def get_label(self, label_mode):
         return np.vstack(tuple([db.get_label(label_mode) for db in self.dbs]))
 
+# class avgDB(object):
+#     def __init__(self, dbs):
+#         self.cdns = dbs[0].cdns
+#         self.rssis = 
+
+#     # def __len__(self):
+#     #     return self.rssis.shape[0]
+
 def get_filenames(folderlist, filenumlist, prefix):
     filenames = []
     for di,num in zip(folderlist, filenumlist):

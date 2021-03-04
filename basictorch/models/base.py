@@ -9,7 +9,7 @@ class Base(nn.Module): #, metaclass=abc.ABCMeta
     def __init__(self, name, args, set_model_params=True, **model_params):
         super().__init__()
         self.name = name
-        self.args = args # args.output, self.args.data_name, args.data_ver, self.args.exp_no
+        self.args = args # args.output, args.data_name, args.data_ver, args.exp_no
         self.loss_funcs = {}
         if set_model_params:
             self.set_model_params(model_params)
@@ -130,7 +130,7 @@ class Base(nn.Module): #, metaclass=abc.ABCMeta
         if hasattr(self.datasets, 'test_dataset'):
             test_losses = self.get_dataset_losses(self.datasets.test_dataset)
             for r in test_losses:
-                if 'test_'+r in self.reporters:
+                if 'test_'+r in self.reporters: #如果要报道的话，就把他加入losses里面
                     losses['test_'+r] = test_losses[r]
         if self.validation:
             val_losses = self.get_dataset_losses(self.datasets.val_dataset)
@@ -194,8 +194,8 @@ class SemiBase(Base):
     
     def on_epoch_end(self):
         super().on_epoch_end()
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
+        # if torch.cuda.is_available():
+        #     torch.cuda.empty_cache()
 
     def train_on_epoch(self):
         for (b, batch_data_l),(b, batch_data_u) in zip(enumerate(self.data_loader), enumerate(self.unlab_loader)):
