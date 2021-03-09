@@ -34,23 +34,27 @@ class Base(nn.Module): #, metaclass=abc.ABCMeta
     def forward(self, x):
         return self.sequential(x)
 
-    def train(self, batch_size=16, epochs=0, validation=True, reporters=['loss','test_loss'], monitor='loss', test_monitor=None, initialize=True):
-        self.batch_size = batch_size
-        self.epochs = epochs
-        self.validation = validation
-        self.reporters = reporters
-        self.monitor = monitor
-        self.test_monitor = test_monitor if test_monitor else 'test_%s' % self.monitor
-        self.initialize = initialize
-        if epochs>0:
-            self.on_train_begin()
-            for e in range(self.epochs):
-                self.on_epoch_begin(e)
-                self.train_on_epoch()
-                self.on_epoch_end()
-            self.on_train_end()
+    def train(self, batch_size=0, epochs=0, validation=True, reporters=['loss','test_loss'], monitor='loss', test_monitor=None, initialize=True):
+        if type(batch_size) != bool:
+            self.batch_size = batch_size
+            self.epochs = epochs
+            self.validation = validation
+            self.reporters = reporters
+            self.monitor = monitor
+            self.test_monitor = test_monitor if test_monitor else 'test_%s' % self.monitor
+            self.initialize = initialize
+            if epochs>0:
+                self.on_train_begin()
+                for e in range(self.epochs):
+                    self.on_epoch_begin(e)
+                    self.train_on_epoch()
+                    self.on_epoch_end()
+                self.on_train_end()
+            else:
+                self.fit_time = 0
         else:
-            self.fit_time = 0
+            mode = batch_size
+            self.train_mode(mode)
     
     def on_train_begin(self):
         print('\n\n--- START TRAINING ---\n\n')
@@ -145,11 +149,13 @@ class Base(nn.Module): #, metaclass=abc.ABCMeta
                 if self.monitor in val_losses:
                     self.monitor_loss = val_losses[self.monitor]+1
                     self.on_epoch_end()
+                self.val_epoch = self.epoch
             else:
                 if (losses['val_'+self.monitor] < self.monitor_loss) and not torch.isnan(losses['val_'+self.monitor]):
                     self.monitor_loss = losses['val_'+self.monitor]
                     self.monitor_losses = losses
                     torch.save(self.state_dict(), self.weights_file)
+                    self.val_epoch = self.epoch
 
     def add_losses_to_history(self, losses):
         for r in list(losses.keys()):
@@ -174,9 +180,9 @@ class Base(nn.Module): #, metaclass=abc.ABCMeta
 
     def save_evaluate(self):
         if self.validation:
-            head = 'data_ver,data_name,exp_no,epochs,batch_size,%s,%s,fit_time\n' % (self.monitor, self.test_monitor)
+            head = 'data_ver,data_name,exp_no,epochs,batch_size,%s,%s,fit_time,val_epoch\n' % (self.monitor, self.test_monitor)
             varList = [self.args.data_ver, self.args.data_name, self.args.exp_no, self.epochs,self.batch_size,\
-                self.monitor_losses[self.monitor].item(), self.monitor_losses[self.test_monitor].item() if self.test_monitor in self.monitor_losses else 'None', self.fit_time]
+                self.monitor_losses[self.monitor].item(), self.monitor_losses[self.test_monitor].item() if self.test_monitor in self.monitor_losses else 'None', self.fit_time, self.val_epoch]
         else:
             head = 'data_ver,data_name,exp_no,epochs,batch_size,loss,fit_time\n'
             varList = [self.args.data_ver, self.args.data_name, self.args.exp_no, self.epochs,self.batch_size,\

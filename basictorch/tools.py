@@ -13,6 +13,9 @@ def get_device(d):
     print('>> device: %s\n' % str(device))
     return torch.device("cuda:%d"%d if torch.cuda.is_available() else "cpu")
 
+def tensor(x):
+    return torch.tensor(x, dtype=torch.float, device=device)
+
 gen_path = os.environ['DEEPPRINT_GEN_PATH']
 
 def str2bool(v):
@@ -220,7 +223,7 @@ def curve_plot(history, args, curve_name='curve', reporters=None, ylim=None, fon
     for r in range(len(reporters)):
         if reporters[r] in history:
             np.nan_to_num(history[reporters[r]])
-            plt.plot(iters, history[reporters[r]], colors[r], label=reporters[r])
+            plt.plot(iters, history[reporters[r]], colors[r%len(colors)], label=reporters[r])
     plt.grid(color='k', linestyle='-', linewidth=0.5)
     plt.xlabel('epochs',get_font(fontsize))
     plt.ylabel('epochs-loss',get_font(fontsize))

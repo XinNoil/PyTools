@@ -19,9 +19,11 @@ def gen_loss(x, x_rec, z_avg, z_log_var):
 def mean_gen_loss(x, x_rec, z_avg, z_log_var):
     return T.mean(gen_loss(x, x_rec, z_avg, z_log_var))
 
+def likelihood(d, sigma):
+    return - ( - 0.5 * np.log(2.*np.pi) - np.log(sigma) - 0.5 * (d**2)/(sigma**2))
+
 def dis_loss(y, y_pred, sigma):
-    dis = T.sqrt(T.sum((y - y_pred)**2, dim=-1))
-    return - ( - 0.5 * np.log(2.*np.pi) - np.log(sigma) - 0.5 * (dis**2)/(sigma**2))
+    return likelihood(T.sqrt(T.sum((y - y_pred)**2, dim=-1)), sigma)
 
 def mean_dis_loss(y, y_pred, sigma):
     return T.mean(dis_loss(y, y_pred, sigma))
@@ -80,6 +82,7 @@ loss_funcs={
     'nll':nll,
     'rmse':rmse,
     'mrmse':mrmse,
+    'likelihood':likelihood,
 }
 
 # BCELoss = T.nn.BCELoss()
