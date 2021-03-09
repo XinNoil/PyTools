@@ -1,14 +1,19 @@
 from .base import *
 
 default_model_params={
-    "loss_func":'mee', 
+    "loss_func":'mee',
+    "check_stable":False, 
+    "threshold_tri":1.0,
+    "threshold_self":1.0,
+    "alpha_tri":1.0,
     "K":9,
-    "threshold_tri":1,
-    "threshold_self":1,
-    "check_stable":False,
 }
 
 class TriModel(Base):
+    def set_args_params(self):
+        self._set_args_params(['check_stable','threshold_tri','threshold_self','alpha_tri','K'])
+        super().set_args_params()
+
     def set_model_params(self, model_params):
         super().set_model_params(model_params, default_model_params)
         self.loss_funcs['loss'] = loss_funcs[self.loss_func]

@@ -11,14 +11,26 @@ class Base(nn.Module): #, metaclass=abc.ABCMeta
         self.name = name
         self.args = args # args.output, args.data_name, args.data_ver, args.exp_no
         self.loss_funcs = {}
+        self.args_params = []
+        self.set_args_params()
+        print('%s args_params: %s' % (self.name, str(self.args_params)))
         if set_model_params:
             self.set_model_params(model_params)
     
     def train_mode(self, mode):
         super().train(mode)
+    
+    def set_args_params(self):
+        self._set_args_params([])
+        # super().set_args_params()
+        
+    def _set_args_params(self, args_params):
+        for param in args_params:
+            if param not in self.args_params:
+                self.args_params.append(param)
 
     def set_model_params(self, model_params, default_model_params={}):
-        for param in default_model_params:
+        for param in self.args_params:
             if hasattr(self.args, param):
                 default_model_params[param] = self.args.__dict__[param].copy() if isinstance(self.args.__dict__[param], list) else self.args.__dict__[param]
         self.model_params = self.get_model_params(model_params, default_model_params)
