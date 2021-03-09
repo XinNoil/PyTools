@@ -16,6 +16,9 @@ def get_device(d):
 def tensor(x):
     return torch.tensor(x, dtype=torch.float, device=device)
 
+def stack_mean(x):
+    return torch.mean(torch.stack(x), dim=0)
+    
 gen_path = os.environ['DEEPPRINT_GEN_PATH']
 
 def str2bool(v):
