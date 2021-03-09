@@ -6,12 +6,12 @@ default_model_params={
     "threshold_tri":1.0,
     "threshold_self":1.0,
     "alpha_tri":1.0,
-    "K":9,
+    "stable_K":9,
 }
 
 class TriModel(Base):
     def set_args_params(self):
-        self._set_args_params(['check_stable','threshold_tri','threshold_self','alpha_tri','K'])
+        self._set_args_params(['check_stable','threshold_tri','threshold_self','alpha_tri','stable_K'])
         super().set_args_params()
 
     def set_model_params(self, model_params):
@@ -63,7 +63,7 @@ class TriModel(Base):
         pseudo_2 = (dis_0_1<self.threshold_tri)&(dis_0_2>self.alpha_tri*self.threshold_tri)&(dis_1_2>self.alpha_tri*self.threshold_tri)
         pseudos = torch.stack([pseudo_0, pseudo_1, pseudo_2])
         if self.check_stable:
-            y_s = torch.stack([torch.stack(self([x_u]*3, tri=True)) for i in range(self.K)])
+            y_s = torch.stack([torch.stack(self([x_u]*3, tri=True)) for i in range(self.stable_K)])
             dis_self = torch.stack([torch.stack([loss_funcs['ee'](y_t, y_i) for y_t, y_i in zip(y_ts, y_k)]) for y_k in y_s])
             dis_self = torch.mean(dis_self, dim=0)
             stable = dis_self<self.threshold_self

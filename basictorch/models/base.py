@@ -13,7 +13,6 @@ class Base(nn.Module): #, metaclass=abc.ABCMeta
         self.loss_funcs = {}
         self.args_params = []
         self.set_args_params()
-        print('%s args_params: %s' % (self.name, str(self.args_params)))
         if set_model_params:
             self.set_model_params(model_params)
     
@@ -36,6 +35,9 @@ class Base(nn.Module): #, metaclass=abc.ABCMeta
         self.model_params = self.get_model_params(model_params, default_model_params)
         for param in model_params:
             self.__dict__[param] = model_params[param].copy() if isinstance(model_params[param], list) else model_params[param]
+        if len(self.args_params):
+            print('%s args_params: %s' % (self.name, str(self.args_params)))
+        print('%s model_params: %s' % (self.name, str(self.model_params)))
     
     def get_model_params(self, model_params, default_model_params):
         for param in default_model_params:
