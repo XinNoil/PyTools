@@ -1,5 +1,14 @@
 from itertools import compress, chain
 
+# str
+def is_number(s):
+    try:
+        float(s)
+        return True
+    except ValueError:
+        pass
+    return False
+
 # lists
 def list_find(l):
     return [i for i, x in enumerate(l) if x]
@@ -23,12 +32,9 @@ def for_print(l):
     for x in l:
         print(x)
 
-# str
-def is_number(s):
-    try:
-        float(s)
-        return True
-    except ValueError:
-        pass
-    return False
-
+# dict
+def merge_dict(d1, d2):
+    d3 = {}
+    d3.update(d1)
+    d3.update(d2)
+    return d3
