@@ -18,6 +18,9 @@ class Base(nn.Module): #, metaclass=abc.ABCMeta
         super().train(mode)
 
     def set_model_params(self, model_params, default_model_params={}):
+        for param in default_model_params:
+            if hasattr(self.args, param):
+                default_model_params[param] = self.args.__dict__[param].copy() if isinstance(self.args.__dict__[param], list) else self.args.__dict__[param]
         self.model_params = self.get_model_params(model_params, default_model_params)
         for param in model_params:
             self.__dict__[param] = model_params[param].copy() if isinstance(model_params[param], list) else model_params[param]
