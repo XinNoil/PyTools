@@ -7,6 +7,7 @@ default_model_params={
     "threshold_self":1.0,
     "alpha_tri":1.0,
     "stable_K":9,
+    "init_share":True,
 }
 
 class TriModel(Base):
@@ -24,7 +25,8 @@ class TriModel(Base):
         self.aug_model   = aug_model
     
     def initialize_model(self):
-        self.share_model.initialize_model()
+        if self.init_share:
+            self.share_model.initialize_model()
         for sub_model in self.sub_models:
             sub_model.initialize_model()
 
@@ -36,20 +38,15 @@ class TriModel(Base):
             z = self.share_model(x)
             return t.stack_mean([sub_model(z) for sub_model in self.sub_models])
 
-    def get_losses(self, batch_data):
+    def get_losses(self, batch_data, loss_func='mee'):
         inputs, labels = batch_data
+        tri_inputs = [inputs]*3
         if self.training:
             if self.aug_model:
                 with torch.no_grad():
                     tri_inputs = [inputs, self.aug_model.decode_y(labels, random_z=True), self.aug_model.generate(labels, random_z=True)]
-            else:
-                tri_inputs = [inputs]*3
-        else:
-            tri_inputs = [inputs]*3
-        tri_labels = [labels]*3
         tri_outputs = self(tri_inputs, tri=True)
-        outputs = t.stack_mean(tri_outputs)
-        return {'loss':t.stack_mean([loss_funcs['mee'](label, output) for label, output in zip(tri_labels, tri_outputs)]), 'mee':loss_funcs['mee'](labels, outputs)}
+        return {'loss':t.stack_mean([loss_funcs[loss_func](labels, outputs) for outputs in tri_outputs])}
 
     def pseudo_labeling(self, x_u):
         self.train_mode(False)

@@ -65,6 +65,8 @@ class CNN(Base):
 
     def build_model(self):
         self.sequential = nn.Sequential()
+        if self.dropouts[0] > 0:
+            self.sequential.add_module('dropout_i', nn.Dropout(self.dropouts[0]))
         if self.dim_x:
             self.sequential.add_module('reshape', nn.Linear(self.dim_x, self.cons[0]*self.dim*self.dim))
         self.sequential.add_module('view', View(-1, self.cons[0], self.dim, self.dim))

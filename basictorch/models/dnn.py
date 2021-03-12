@@ -39,9 +39,12 @@ class DNN(Base):
             self.sequential.add_module('%s%d'%(self.activations, l), act_modules[self.activations])
             if self.dropouts[1]>0:
                 self.sequential.add_module('dropout_%d'%l, nn.Dropout(self.dropouts[1]))
-        self.sequential.add_module('out_layer', nn.Linear(self.layer_units[-1], self.dim_y))
-        if self.out_activation:
-            self.sequential.add_module(self.out_activation, act_modules[self.out_activation])
+        if self.dim_y:
+            self.sequential.add_module('out_layer', nn.Linear(self.layer_units[-1], self.dim_y))
+            if self.out_activation:
+                self.sequential.add_module(self.out_activation, act_modules[self.out_activation])
+        else:
+            self.dim_y = self.layer_units[-1]
         if self.spectral:
             self.apply(t.spectral_norm)
 
