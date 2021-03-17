@@ -8,11 +8,12 @@ default_model_params={
     "alpha_tri":1.0,
     "stable_K":9,
     "init_share":True,
+    "aug_intensity":1.0,
 }
 
 class TriModel(Base):
     def set_args_params(self):
-        self._set_args_params(['check_stable','threshold_tri','threshold_self','alpha_tri','stable_K'])
+        self._set_args_params(['check_stable','threshold_tri','threshold_self','alpha_tri','stable_K','aug_epoch','aug_intensity'])
         super().set_args_params()
 
     def set_model_params(self, model_params):
@@ -40,11 +41,12 @@ class TriModel(Base):
 
     def get_losses(self, batch_data, loss_func='mee'):
         inputs, labels = batch_data
-        tri_inputs = [inputs]*3
-        if self.training:
-            if self.aug_model:
-                with torch.no_grad():
-                    tri_inputs = [inputs, self.aug_model.decode_y(labels, random_z=True), self.aug_model.generate(labels, random_z=True)]
+        if self.training & (self.aug_model!=None):
+            with torch.no_grad():
+                tri_inputs = [self.aug_model.decode_y(labels, random_z=True, intensity=self.aug_intensity) for i in range(2)]
+                tri_inputs.insert(self.b%3, inputs)
+        else:
+            tri_inputs = [inputs]*3
         tri_outputs = self(tri_inputs, tri=True)
         return {'loss':t.stack_mean([loss_funcs[loss_func](labels, outputs) for outputs in tri_outputs])}
 

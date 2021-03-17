@@ -78,6 +78,7 @@ class Base(nn.Module): #, metaclass=abc.ABCMeta
         t.set_weight_file(self)
         self.history = {}
         self.train_fit_time = t.time.process_time()
+        self.b = 0
         if self.initialize:
             self.initialize_model()
         self.check_validation()
@@ -86,8 +87,8 @@ class Base(nn.Module): #, metaclass=abc.ABCMeta
         self.fit_time = t.time.process_time() - self.train_fit_time
         if self.validation:
             self.load_state_dict(torch.load(self.weights_file))
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
+        # if torch.cuda.is_available():
+        #     torch.cuda.empty_cache()
         print('\n\n--- FINISH TRAINING ---\n\n')
         self.save_end()
 
@@ -99,6 +100,7 @@ class Base(nn.Module): #, metaclass=abc.ABCMeta
     
     def train_on_epoch(self):
         for b, batch_data in enumerate(self.data_loader):
+            self.b = b
             losses = self.train_on_batch(b, batch_data)
             self.print_batch(b, losses)
     
@@ -252,6 +254,7 @@ acts = {
     'tanh':torch.tanh,
     'sigmoid':torch.sigmoid,
     'leakyrelu':torch.nn.functional.leaky_relu,
+    'elu':torch.nn.functional.elu,
 }
 
 act_modules = {
@@ -259,6 +262,7 @@ act_modules = {
     'tanh':nn.Tanh(),
     'sigmoid':nn.Sigmoid(),
     'leakyrelu':torch.nn.modules.LeakyReLU(),
+    'elu':nn.ELU(),
 }
 
 poolings={
