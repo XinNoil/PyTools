@@ -8,12 +8,12 @@ default_model_params={
     "alpha_tri":1.0,
     "stable_K":9,
     "init_share":True,
-    "aug_intensity":1.0,
+    "aug_intensity":0.5,
 }
 
 class TriModel(Base):
     def set_args_params(self):
-        self._set_args_params(['check_stable','threshold_tri','threshold_self','alpha_tri','stable_K','aug_epoch','aug_intensity'])
+        self._set_args_params(['check_stable','threshold_tri','threshold_self','alpha_tri','stable_K'])
         super().set_args_params()
 
     def set_model_params(self, model_params):
@@ -50,7 +50,7 @@ class TriModel(Base):
         tri_outputs = self(tri_inputs, tri=True)
         return {'loss':t.stack_mean([loss_funcs[loss_func](labels, outputs) for outputs in tri_outputs])}
 
-    def pseudo_labeling(self, x_u):
+    def pseudo_labeling(self, x_u, batch_avg=False):
         self.train_mode(False)
         y_ts = self([x_u]*3, tri=True)
         self.train_mode(True)
@@ -71,4 +71,6 @@ class TriModel(Base):
             pseudo_2 = pseudo_2&stable[0]&stable[1]
         pseudo_labels = [t.stack_mean([y_ts[1], y_ts[2]])[pseudos[0]], t.stack_mean([y_ts[0], y_ts[2]])[pseudos[1]], t.stack_mean([y_ts[1], y_ts[1]])[pseudos[2]]]
         pseudo_losses = [loss_funcs['mee'](y_t[pseudo], pseudo_label) if torch.sum(pseudo)>0 else t.tensor(0) for y_t,pseudo,pseudo_label in zip(y_ts, pseudos, pseudo_labels)]
+        if batch_avg:
+            pseudo_losses = [(pseudo_loss*pseudo_label.shape[0])/x_u.shape[0] for pseudo_loss,pseudo_label in zip(pseudo_losses,pseudo_labels)]
         return t.stack_mean(pseudo_losses)

@@ -255,6 +255,7 @@ acts = {
     'sigmoid':torch.sigmoid,
     'leakyrelu':torch.nn.functional.leaky_relu,
     'elu':torch.nn.functional.elu,
+    'softmax':torch.softmax,
 }
 
 act_modules = {
@@ -263,6 +264,7 @@ act_modules = {
     'sigmoid':nn.Sigmoid(),
     'leakyrelu':torch.nn.modules.LeakyReLU(),
     'elu':nn.ELU(),
+    'softmax':torch.nn.Softmax(),
 }
 
 poolings={
