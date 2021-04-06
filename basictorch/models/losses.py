@@ -62,6 +62,24 @@ def nig_reg(y, gamma, v, alpha):
     reg = T.abs(y-gamma)*evi
     return T.mean(reg)
 
+def triee(output, label): # loss = sqrt( a^2+b^2-2*a*b*cos(theta))
+    return T.sqrt(output[:,0]**2+label[:,0]**2-2*output[:,0]*label[:,0]*T.cos(output[:,1]-label[:,1]))
+
+def trimee(output, label):
+    return T.mean(triee(output, label))
+
+def imuloss(output, label, alpha=0.1):
+    dif = T.abs(output-label)
+    return T.mean(dif[:,0] + alpha*dif[:,1]) #  # alpha*dif[:,1]
+
+def imuloss_l(output, label, alpha=1.0):
+    dif = T.abs(output-label)
+    return T.mean(dif[:,0]) #  # alpha*dif[:,1]
+
+def imuloss_psi(output, label, alpha=1.0):
+    dif = T.abs(output-label)
+    return T.mean(dif[:,1]) # dif[:,0] # alpha*
+
 ee = euclidean_error
 mee = mean_euclidean_error
 mrl = mean_rec_loss
@@ -83,6 +101,10 @@ loss_funcs={
     'rmse':rmse,
     'mrmse':mrmse,
     'likelihood':likelihood,
+    'trimee':trimee,
+    'imuloss':imuloss,
+    'imuloss_l':imuloss_l,
+    'imuloss_psi':imuloss_psi,
 }
 
 # BCELoss = T.nn.BCELoss()

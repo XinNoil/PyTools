@@ -239,6 +239,9 @@ class DB(object):
                         self.__dict__[k]=list_mask(v, p)
                     else:
                         self.__dict__[k]=v[p]
+    
+    def normalize_rssis(self):
+        self.rssis = normalize_rssis(self.rssis)
 
 class SubDB(object):
     def __init__(self, db, mask):
@@ -251,7 +254,7 @@ class SubDB(object):
     def get_feature(self, feature_mode='R'):
         return self.db.get_feature(feature_mode)[self.mask]
     
-    def get_label(self, label_mode):
+    def get_label(self, label_mode=None):
         return self.db.get_label(label_mode)[self.mask]
 
 class DBs(object):
@@ -276,7 +279,7 @@ class DBs(object):
     def get_feature(self, feature_mode='R'):
         return np.vstack(tuple([db.get_feature(feature_mode) for db in self.dbs]))
     
-    def get_label(self, label_mode):
+    def get_label(self, label_mode=None):
         return np.vstack(tuple([db.get_label(label_mode) for db in self.dbs]))
 
 # class avgDB(object):
