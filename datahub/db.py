@@ -12,6 +12,10 @@ class Setting(object):
     def print(self):
         print(self.cdns.shape)
         print(len(self.wfiles))
+    
+    def set_mask(self, mask):
+        self.cdns = self.cdns[mask]
+        self.wfiles = self.wfiles[mask]
 
 class DB(object):
     # bssids, cdns, rssis, mags, RecordsNums
@@ -240,6 +244,9 @@ class DB(object):
                     else:
                         self.__dict__[k]=v[p]
     
+    def normalize_rssis(self):
+        self.rssis = normalize_rssis(self.rssis)
+
     def normalize_rssis(self):
         self.rssis = normalize_rssis(self.rssis)
 
