@@ -51,7 +51,7 @@ class Base(nn.Module): #, metaclass=abc.ABCMeta
     def forward(self, x):
         return self.sequential(x)
 
-    def train(self, batch_size=0, epochs=0, validation=True, reporters=['loss','test_loss'], monitor='loss', test_monitor=None, initialize=True):
+    def train(self, batch_size=0, epochs=0, validation=True, reporters=['loss','test_loss'], monitor='loss', test_monitor=None, initialize=True, max_sub_size=1e3):
         if type(batch_size) != bool:
             self.batch_size = batch_size
             self.epochs = epochs
@@ -60,6 +60,7 @@ class Base(nn.Module): #, metaclass=abc.ABCMeta
             self.monitor = monitor
             self.test_monitor = test_monitor if test_monitor else 'test_%s' % self.monitor
             self.initialize = initialize
+            self.max_sub_size = max_sub_size
             if epochs>0:
                 self.on_train_begin()
                 for e in range(self.epochs):
@@ -136,9 +137,17 @@ class Base(nn.Module): #, metaclass=abc.ABCMeta
         return losses
 
     def get_dataset_losses(self, dataset):
+        batch_data=tuple(dataset.tensors)
+        return self.get_batchdata_losses(batch_data)
+        
+    def get_batchdata_losses(self, batch_data):
         with torch.no_grad():
             self.train_mode(False)
-            return self.get_losses(tuple(dataset.tensors))
+            losses_list = []
+            for sub_batch_data in t.get_sub_batch_data(batch_data, self.max_sub_size):
+                losses_list.append(self.get_losses(sub_batch_data))
+            losses = t.merge_losses(losses_list)
+            return losses
 
     def set_datasets(self, datasets):
         self.datasets = datasets
@@ -229,14 +238,8 @@ class SemiBase(Base):
             self.print_batch(b, losses)
     
     def get_dataset_losses(self, dataset):
-        with torch.no_grad():
-            self.train_mode(False)
-            batch_data = tuple(dataset.tensors)+tuple(self.datasets.get_unlab_dataset(dataset).tensors)
-            losses_list = []
-            for sub_batch_data in t.get_sub_batch_data(batch_data):
-                losses_list.append(self.get_losses(sub_batch_data))
-            losses = t.merge_losses(losses_list)
-            return losses
+        batch_data = tuple(dataset.tensors)+tuple(self.datasets.get_unlab_dataset(dataset).tensors)
+        return self.get_batchdata_losses(batch_data)
     
     def get_losses(self, batch_data):
         inputs, labels, unlabs = batch_data

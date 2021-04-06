@@ -274,7 +274,7 @@ def copy_params(s, t, inds=None, indt=None, reverse=False):
                         lt.weight.copy_(ls.weight)
                         lt.bias.copy_(ls.bias)
 
-def get_sub_batch_data(batch_data, max_sub_size=5e3):
+def get_sub_batch_data(batch_data, max_sub_size):
     batch_sizes = [data.shape[0] for data in batch_data]
     sub_num = max([batch_size/max_sub_size for batch_size in batch_sizes])
     sub_sizes = [int(batch_size/sub_num) for batch_size in batch_sizes]
