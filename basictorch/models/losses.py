@@ -11,13 +11,13 @@ def mean_euclidean_error(output, target):
 def mean_rec_loss(x, x_rec):
     return mean_squared_error(x, x_rec)
 
-def gen_loss(x, x_rec, z_avg, z_log_var):
+def gen_loss(x, x_rec, z_avg, z_log_var, alpha=1.0):
     x_rec_loss = T.mean((x - x_rec).pow(2), dim=-1)
     z_kl_loss = -0.5 * T.sum(1.0 + z_log_var - z_avg.pow(2) - z_log_var.exp(), dim=-1)
-    return z_kl_loss + x_rec_loss
+    return alpha*z_kl_loss + x_rec_loss
 
-def mean_gen_loss(x, x_rec, z_avg, z_log_var):
-    return T.mean(gen_loss(x, x_rec, z_avg, z_log_var))
+def mean_gen_loss(x, x_rec, z_avg, z_log_var, alpha=1.0):
+    return T.mean(gen_loss(x, x_rec, z_avg, z_log_var, alpha))
 
 def likelihood(d, sigma):
     return - ( - 0.5 * np.log(2.*np.pi) - np.log(sigma) - 0.5 * (d**2)/(sigma**2))

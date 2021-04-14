@@ -53,15 +53,15 @@ class Base(nn.Module): #, metaclass=abc.ABCMeta
 
     def train(self, batch_size=0, epochs=0, validation=True, reporters=['loss','test_loss'], monitor='loss', test_monitor=None, initialize=True, max_sub_size=1e3):
         if type(batch_size) != bool:
-            self.batch_size = batch_size
-            self.epochs = epochs
-            self.validation = validation
-            self.reporters = reporters
-            self.monitor = monitor
-            self.test_monitor = test_monitor if test_monitor else 'test_%s' % self.monitor
-            self.initialize = initialize
-            self.max_sub_size = max_sub_size
             if epochs>0:
+                self.batch_size = batch_size
+                self.epochs = epochs
+                self.validation = validation
+                self.reporters = reporters
+                self.monitor = monitor
+                self.test_monitor = test_monitor if test_monitor else 'test_%s' % self.monitor
+                self.initialize = initialize
+                self.max_sub_size = max_sub_size
                 self.on_train_begin()
                 for e in range(self.epochs):
                     self.on_epoch_begin(e)

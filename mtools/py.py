@@ -1,3 +1,4 @@
+import argparse
 from itertools import compress, chain
 
 # str
@@ -8,6 +9,14 @@ def is_number(s):
     except ValueError:
         pass
     return False
+
+def str2bool(v):
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Unsupported value encountered.')
 
 # lists
 def list_find(l):

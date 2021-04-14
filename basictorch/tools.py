@@ -3,7 +3,7 @@ import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
-from mtools import tojson, save_json, load_json,check_dir, colors_names
+from mtools import tojson, save_json, load_json,check_dir, colors_names, str2bool
 from sklearn.manifold import TSNE
 import matplotlib.animation as animation
 
@@ -20,14 +20,6 @@ def stack_mean(x):
     return torch.mean(torch.stack(x), dim=0)
     
 gen_path = os.environ['DEEPPRINT_GEN_PATH']
-
-def str2bool(v):
-    if v.lower() in ('yes', 'true', 't', 'y', '1'):
-        return True
-    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
-        return False
-    else:
-        raise argparse.ArgumentTypeError('Unsupported value encountered.')
 
 def get_filename(args, name, file_extension='csv', file_type='output', by_exp_no=True):
     postfix = '%s_%s' % (name, args.exp_no) if by_exp_no else name
