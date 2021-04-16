@@ -19,6 +19,11 @@ def gen_loss(x, x_rec, z_avg, z_log_var, alpha=1.0):
 def mean_gen_loss(x, x_rec, z_avg, z_log_var, alpha=1.0):
     return T.mean(gen_loss(x, x_rec, z_avg, z_log_var, alpha))
 
+def mean_rec_kl_loss(x, x_rec, z_avg, z_log_var):
+    x_rec_loss = T.mean((x - x_rec).pow(2), dim=-1)
+    z_kl_loss = -0.5 * T.sum(1.0 + z_log_var - z_avg.pow(2) - z_log_var.exp(), dim=-1)
+    return T.mean(x_rec_loss), T.mean(z_kl_loss)
+
 def likelihood(d, sigma):
     return - ( - 0.5 * np.log(2.*np.pi) - np.log(sigma) - 0.5 * (d**2)/(sigma**2))
 
@@ -105,6 +110,7 @@ loss_funcs={
     'imuloss':imuloss,
     'imuloss_l':imuloss_l,
     'imuloss_psi':imuloss_psi,
+    'mrkl':mean_rec_kl_loss,
 }
 
 # BCELoss = T.nn.BCELoss()
