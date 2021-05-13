@@ -21,6 +21,19 @@ def np_avg(arr, r):
     arrs = np.split(arr, r.cumsum()[:-1])
     return np.array([np.mean(x, 0) for x in arrs])
 
+def np_avg_std(arr, r):
+    arrs = np.split(arr, r.cumsum()[:-1])
+    return np.array([np.mean(x, 0) for x in arrs]), np.array([np.std(x, 0) for x in arrs])
+
+def np_mean_nonzero(data, zero_value=-100, axis=0):
+    data_sum = np.sum(data, axis=axis)
+    data_zero_num = np.sum(data==zero_value, axis=axis)
+    data_nonzero_num = data.shape[axis] - data_zero_num
+    data_sum -= zero_value*data_zero_num
+    data_sum[data_nonzero_num==0] = zero_value
+    data_nonzero_num[data_nonzero_num==0] = 1
+    return data_sum/data_nonzero_num
+
 def np_union_shuffle(a, b):
     assert len(a) == len(b)
     p = np.random.permutation(len(a))

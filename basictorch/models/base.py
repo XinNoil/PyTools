@@ -162,7 +162,7 @@ class Base(nn.Module): #, metaclass=abc.ABCMeta
         if hasattr(self.datasets, 'test_dataset'):
             test_losses = self.get_dataset_losses(self.datasets.test_dataset)
             for r in test_losses:
-                if 'test_'+r in self.reporters: #如果要报道的话，就把他加入losses里面
+                if 'test_'+r in self.reporters:
                     losses['test_'+r] = test_losses[r]
         if self.validation:
             val_losses = self.get_dataset_losses(self.datasets.val_dataset)
@@ -184,6 +184,8 @@ class Base(nn.Module): #, metaclass=abc.ABCMeta
                     self.monitor_losses = losses
                     torch.save(self.state_dict(), self.weights_file)
                     self.val_epoch = self.epoch
+        else:
+            self.monitor_losses = losses
 
     def add_losses_to_history(self, losses):
         for r in list(losses.keys()):
