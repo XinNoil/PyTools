@@ -132,11 +132,13 @@ class DB(object):
     def process_data(self, bssids, avg, save_h5_file, event, is_save_h5, merge_method):
         if not os.path.exists(self.pre_path()):
             os.mkdir(self.pre_path())
-        self.process_wifi(bssids, avg, save_h5_file, event, merge_method)
+        self.process_wifi(avg, save_h5_file, event, merge_method)
         if (not avg) and len(self.cdns):
             self.cdns = np_repeat(self.cdns, self.RecordsNums)
         if is_save_h5:
             save_h5(self.save_name(avg), self)
+        if bssids:
+            self.set_bssids(bssids)
     
     def process_bssids_max_rssis(self):
         bssids_results = [get_bssids(filename, self.zip_name(), [], []) for filename in self.wfiles]
@@ -146,15 +148,13 @@ class DB(object):
         save_json(self.max_rssis_list_name(), max_rssis_list)
         return bssids_list, max_rssis_list
     
-    def process_wifi(self, bssids, avg, save_h5_file, event, merge_method):
+    def process_wifi(self, avg, save_h5_file, event, merge_method):
         if os.path.exists(self.bssids_list_name()) & os.path.exists(self.max_rssis_list_name()):
             bssids_list = load_json(self.bssids_list_name())
             max_rssis_list = load_json(self.max_rssis_list_name())
         else:
             bssids_list, max_rssis_list = self.process_bssids_max_rssis()
-        if bssids:
-            self.bssids = bssids
-        elif os.path.exists(self.bssids_name()):
+        if os.path.exists(self.bssids_name()):
             self.bssids = load_json(self.bssids_name())
         else:
             bssids = [bssid for bssids in bssids_list for bssid in bssids]
