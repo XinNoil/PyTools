@@ -84,3 +84,7 @@ def read_file(file_name):
     str_list = file_.read().splitlines()
     file_.close()
     return str_list
+
+# print
+def print_mat_eq(name,val):
+    print('%s=%s;'%(name, val))

@@ -51,15 +51,15 @@ class Base(nn.Module): #, metaclass=abc.ABCMeta
     def forward(self, x):
         return self.sequential(x)
 
-    def train(self, batch_size=0, epochs=0, validation=True, reporters=['loss','test_loss'], monitor='loss', test_monitor=None, initialize=True, max_sub_size=1e3):
+    def train(self, batch_size=0, epochs=0, validation=True, reporters=[], monitor=None, test_monitor=None, initialize=True, max_sub_size=1e3):
         if type(batch_size) != bool:
             if epochs>0:
                 self.batch_size = batch_size
                 self.epochs = epochs
                 self.validation = validation
                 self.reporters = reporters
-                self.monitor = monitor
-                self.test_monitor = test_monitor if test_monitor else 'test_%s' % self.monitor
+                self.monitor = monitor if monitor else (self.monitor if hasattr(self, 'monitor') else 'loss')
+                self.test_monitor = test_monitor if test_monitor else self.monitor
                 self.initialize = initialize
                 self.max_sub_size = max_sub_size
                 self.on_train_begin()
@@ -161,6 +161,7 @@ class Base(nn.Module): #, metaclass=abc.ABCMeta
         losses = self.get_dataset_losses(self.datasets.train_dataset)
         if hasattr(self.datasets, 'test_dataset'):
             test_losses = self.get_dataset_losses(self.datasets.test_dataset)
+            losses['test_'+self.test_monitor] = test_losses[self.test_monitor]
             for r in test_losses:
                 if 'test_'+r in self.reporters:
                     losses['test_'+r] = test_losses[r]
@@ -210,9 +211,9 @@ class Base(nn.Module): #, metaclass=abc.ABCMeta
 
     def save_evaluate(self):
         if self.validation:
-            head = 'data_ver,data_name,exp_no,epochs,batch_size,%s,%s,fit_time,val_epoch\n' % (self.monitor, self.test_monitor)
+            head = 'data_ver,data_name,exp_no,epochs,batch_size,%s,%s,fit_time,val_epoch\n' % (self.monitor, 'test_%s'%self.test_monitor)
             varList = [self.args.data_ver, self.args.data_name, self.args.exp_no, self.epochs,self.batch_size,\
-                self.monitor_losses[self.monitor].item(), self.monitor_losses[self.test_monitor].item() if self.test_monitor in self.monitor_losses else 'None', self.fit_time, self.val_epoch]
+                self.monitor_losses[self.monitor].item(), self.monitor_losses['test_%s'%self.test_monitor].item() if 'test_%s'%self.test_monitor in self.monitor_losses else 'None', self.fit_time, self.val_epoch]
         else:
             head = 'data_ver,data_name,exp_no,epochs,batch_size,loss,fit_time\n'
             varList = [self.args.data_ver, self.args.data_name, self.args.exp_no, self.epochs,self.batch_size,\

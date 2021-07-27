@@ -1,3 +1,4 @@
+from torch.utils.data.dataset import Dataset
 from .base import *
 
 default_model_params={
@@ -8,6 +9,7 @@ default_model_params={
     'out_activation':None, 
     'dropouts':[0.0, 0.0], 
     'loss_func':'mee', 
+    'monitor':'mee',
     'spectral':False,
 }
 
@@ -23,10 +25,18 @@ class dnn(nn.Module):
         return self.out_layer(x)
 
 class DNN(Base):
+    def set_args_params(self):
+        self._set_args_params([
+            'layer_units','activations','out_activation','dropouts','loss_func','monitor','spectral'
+            ])
+        super().set_args_params()
+        
     def set_model_params(self, model_params):
         super().set_model_params(model_params, default_model_params)
         self.layer_units.insert(0, self.dim_x)
         self.loss_funcs['loss'] = loss_funcs[self.loss_func]
+        if self.monitor != 'loss':
+            self.loss_funcs[self.monitor] = loss_funcs[self.monitor]
         self.build_model()
         self.optimizer = optim.Adadelta(self.parameters(), rho=0.95, eps=1e-7)
 
@@ -48,10 +58,12 @@ class DNN(Base):
         if self.spectral:
             self.apply(t.spectral_norm)
 
-def train_dnn(args, Ds, dnn=None, model_params={}):
+def train_dnn(args, Ds, dnn=None, model_params={}, train_params={}):
     if not dnn:
         dnn = DNN
     for e in range(args.trails):
+        if hasattr(Ds, 're_split'):
+            Ds.re_split()
         args.exp_no = t.get_exp_no(args, e+1)
         model = dnn('dnn', args,
                 dim_x=Ds.train_dataset.tensors[0].shape[1], 
@@ -62,5 +74,5 @@ def train_dnn(args, Ds, dnn=None, model_params={}):
             ).to(t.device)
         print(model)
         model.set_datasets(Ds)
-        model.train(batch_size=args.batch_size, epochs=args.epochs, initialize=True)
+        model.train(batch_size=args.batch_size, epochs=args.epochs, initialize=True, **train_params)
     return model

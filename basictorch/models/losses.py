@@ -1,9 +1,10 @@
 import torch as T
 import numpy as np
 from .layers import softplus
+eps=1e-6
 
 def euclidean_error(output, target):
-    return T.sqrt(T.sum((output - target)**2, dim=-1))
+    return T.sqrt(T.sum((output - target)**2+eps, dim=-1))
 
 def mean_euclidean_error(output, target):
     return T.mean(euclidean_error(output, target))

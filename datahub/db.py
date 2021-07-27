@@ -52,9 +52,12 @@ class DB(object):
                 self.cdns = np.array(cdns)
                 self.wfiles = wfiles
                 self.process_data(bssids, avg, save_h5_file, event, is_save_h5, merge_method)
+            elif os.path.exists(os.path.join(self.data_path, self.data_name)):
+                print('load txt file: %s'%os.path.join(self.data_path, self.data_name))
+                self.cdns = np.array(cdns)
+                self.wfiles = wfiles
+                self.process_data(bssids, avg, save_h5_file, event, is_save_h5, merge_method)
         self.dev = dev
-        if hasattr(self, 'rssis'):
-            print('len: %d'%len(self))
 
     def __len__(self):
         return self.rssis.shape[0]  
@@ -86,7 +89,7 @@ class DB(object):
             self.RecordsNums = self.RecordsNums[mask]
     
     def avg(self):
-        if os.path.exists(os.path.join(self.data_path, '%s_data_description.json'%self.data_name)):
+        if (not hasattr(self, 'RecordsNums')) & os.path.exists(os.path.join(self.data_path, '%s_data_description.json'%self.data_name)):
             desc = load_json(os.path.join(self.data_path, '%s_data_description.json'%self.data_name))
             self.RecordsNums = np.array(desc['RecordsNums'])
         if np.sum(self.RecordsNums) != self.cdns.shape[0]:
@@ -96,6 +99,10 @@ class DB(object):
         self.mags  = np_avg(self.mags, self.RecordsNums)
         self.rssis,self.rssis_std = np_avg_std(self.rssis, self.RecordsNums)
         self.RecordsNums = np.ones(len(self))
+    
+    def avg_rssis(self):
+        self.rssis = np_avg(self.rssis, self.RecordsNums)
+        self.cdns  = np_avg(self.cdns, self.RecordsNums)
 
     def filename(self, postfix=None, ext=None):
         filename = self.data_name
@@ -121,13 +128,13 @@ class DB(object):
         return self.filename(postfix='pre')
     
     def bssids_list_name(self):
-        return os.path.join(self.pre_path(), '%s_%s_bssids_list.json'%(self.data_name, self.dbtype))
+        return os.path.join(self.pre_path(), 'bssids_list.json')
     
     def max_rssis_list_name(self):
-        return os.path.join(self.pre_path(), '%s_%s_max_rssis_list.json'%(self.data_name, self.dbtype))
+        return os.path.join(self.pre_path(), 'max_rssis_list.json')
     
     def bssids_name(self):
-        return os.path.join(self.pre_path(), '%s_%s_bssids.json'%(self.data_name, self.dbtype))
+        return os.path.join(self.pre_path(), 'bssids.json')
         
     def process_data(self, bssids, avg, save_h5_file, event, is_save_h5, merge_method):
         if not os.path.exists(self.pre_path()):
@@ -141,7 +148,10 @@ class DB(object):
             self.set_bssids(bssids)
     
     def process_bssids_max_rssis(self):
-        bssids_results = [get_bssids(filename, self.zip_name(), [], []) for filename in self.wfiles]
+        if os.path.exists(self.zip_name()):
+            bssids_results = [get_bssids(filename, self.zip_name(), [], []) for filename in self.wfiles]
+        else:
+            bssids_results = [get_bssids(os.path.join(self.data_path, self.data_name, filename)) for filename in self.wfiles]
         bssids_list = [bssids for bssids, max_rssis in bssids_results]
         max_rssis_list = [max_rssis for bssids, max_rssis in bssids_results]
         save_json(self.bssids_list_name(), bssids_list)
@@ -183,26 +193,31 @@ class DB(object):
         for filename,bssids in zip(self.wfiles, bssids_list):
             if os.path.exists(self.prefilename(filename)):
                 wiFiData = self.load_prefile(filename)
-            else:
+            elif os.path.exists(self.zip_name()):
                 wiFiData = process_rssis(filename, bssids, self.zip_name(), event)
-                if save_h5_file:
-                    save_h5(self.prefilename(filename), wiFiData)
+            else:
+                wiFiData = process_rssis(os.path.join(self.data_path, self.data_name, filename), bssids, None, event)
+            if (not os.path.exists(self.prefilename(filename))) & save_h5_file:
+                save_h5(self.prefilename(filename), wiFiData)
             rssis = set_bssids(wiFiData.rssis, bssids, self.bssids)
             if not event:
                 if merge_method=='nonzero':
                     rssis = np.array([np_mean_nonzero(x) for x in np.array_split(rssis, np.floor(len(rssis)/5.0), axis=0)])
-                else:
+                elif merge_method=='all':
                     rssis = np.array([np.mean(x, 0) for x in np.array_split(rssis, np.floor(len(rssis)/5.0), axis=0)])
+                else:
+                    rssis = np.array(rssis, dtype='i')
                 rssis = rssis[self.start_time:]
             if avg:
                 if merge_method=='nonzero':
                     self.rssis.append(np_mean_nonzero(rssis))
-                else:
+                elif merge_method=='all':
                     self.rssis.append(np.mean(rssis, axis=0))
+                else:
+                    rssis = np.array(rssis, dtype='i')
             else:
                 self.rssis.append(rssis)
                 self.RecordsNums.append(len(rssis))
-
         self.rssis = np.vstack(self.rssis)
         if avg:
             self.RecordsNums = np.ones(len(self))
@@ -215,14 +230,16 @@ class DB(object):
         return wiFiData
     
     def set_mask(self, mask):
+        self_len = len(self)
         for k,v in zip(self.__dict__.keys(), self.__dict__.values()):
             if hasattr(v,'__len__'):
-                if (type(mask[0])==bool or type(mask[0])==np.bool_) & (len(v)==len(self)):
-                    if (type(v)==list)&(type(v[0])==str):
-                        self.__dict__[k]=list_mask(v, mask)
-                    elif type(v)==np.ndarray:
+                if type(mask[0])==bool or (mask.dtype==np.bool_ if hasattr(mask, 'dtype') else False):
+                    if len(v)==len(mask):
+                        if type(v)==list and type(v[0])==str:
+                            self.__dict__[k]=list_mask(v, mask)
+                            continue
                         self.__dict__[k]=v[mask]
-                elif len(v)==len(self):
+                elif len(v)==self_len:
                     self.__dict__[k]=v[mask]
     
     def set_bssids(self, bssids):
@@ -243,8 +260,11 @@ class DB(object):
         elif feature_mode == 'RMM':
             return np.hstack((self.mags, normalize_rssis(self.rssis) if np.max(self.rssis)<0 else self.rssis))
     
-    def get_label(self, label_mode):
-        return self.cdns
+    def get_label(self, label_mode=None):
+        if label_mode and hasattr(self, label_mode):
+            return self.__dict__[label_mode]
+        else:
+            return self.cdns
     
     def devs(self):
         return [self.dev]
@@ -274,6 +294,11 @@ class DB(object):
 
     def unnormalize_rssis(self):
         self.rssis = unnormalize_rssis(self.rssis)
+    
+    def print(self):
+        if hasattr(self, 'rssis'):
+            print('len: %d'%len(self))
+        print([(k, len(v) if type(v)==list else (v.shape if type(v)==np.ndarray else v)) for k,v in zip(self.__dict__.keys(), self.__dict__.values())])
 
 class SubDB(object):
     def __init__(self, db, mask):
@@ -292,11 +317,15 @@ class SubDB(object):
     def cdns(self):
         return self.db.cdns[self.mask]
     
+    @property
+    def rp_no(self):
+        return self.db.rp_no[self.mask]
+    
     def devs(self):
         return self.db.devs()
     
     def __len__(self):
-        return np.sum(self.mask) if len(self.db)==len(self.mask) & max(self.mask)<=1.0 else len(self.mask)
+        return np.sum(self.mask) if len(self.db)==len(self.mask) and max(self.mask)<=1.0 else len(self.mask)
     
     def get_feature(self, feature_mode='R'):
         return self.db.get_feature(feature_mode)[self.mask]
@@ -323,6 +352,10 @@ class DBs(object):
     @property
     def cdns(self):
         return np.vstack(tuple([db.cdns for db in self.dbs]))
+    
+    @property
+    def rp_no(self):
+        return np.vstack(tuple([db.rp_no for db in self.dbs]))
     
     def devs(self):
         return [db.dev for db in self.dbs]
