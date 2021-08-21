@@ -3,8 +3,11 @@ import numpy as np
 from .layers import softplus
 eps=1e-6
 
+# def euclidean_error(output, target):
+#     return T.sqrt(T.sum((output - target)**2+eps, dim=-1))
+
 def euclidean_error(output, target):
-    return T.sqrt(T.sum((output - target)**2+eps, dim=-1))
+    return T.sqrt(T.sum((output - target)**2, dim=-1))
 
 def mean_euclidean_error(output, target):
     return T.mean(euclidean_error(output, target))
@@ -36,6 +39,12 @@ def mean_dis_loss(y, y_pred, sigma):
 
 def mean_squared_error(y, y_pred):
     return T.mean((y_pred-y)**2)
+
+def weighted_mean_squared_error(y, y_pred, w):
+    return T.mean(w*(y_pred-y)**2)
+
+def normpdf(d, sigma, B=np):
+    return B.exp( - 0.5 * np.log(2.*np.pi) - np.log(sigma) - 0.5 * (d**2)/(sigma**2))
 
 def root_mean_square_error(y, y_pred):
     return T.sqrt(mean_squared_error(y, y_pred))
@@ -95,7 +104,7 @@ mse = mean_squared_error
 nll = negative_log_likelihood
 rmse = root_mean_square_error
 mrmse = mean_root_mean_square_error
-
+wmse = weighted_mean_squared_error
 loss_funcs={
     'ee':ee,
     'mee':mee,
@@ -112,6 +121,7 @@ loss_funcs={
     'imuloss_l':imuloss_l,
     'imuloss_psi':imuloss_psi,
     'mrkl':mean_rec_kl_loss,
+    'wmse':wmse
 }
 
 # BCELoss = T.nn.BCELoss()

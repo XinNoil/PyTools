@@ -53,7 +53,13 @@ def get_exp_no(args, e):
 
 def get_start_exp_no(exp_no):
     return 0 if exp_no == '' else int(exp_no)
-    
+
+def get_model_params(model_params, default_model_params):
+    for param in default_model_params:
+        if param not in model_params:
+            model_params[param] = default_model_params[param]
+    return model_params
+
 # torch models tools
 def get_layers(input_dim, layer_units, Linear = torch.nn.Linear):
     layers = torch.nn.ModuleList()

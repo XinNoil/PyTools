@@ -31,16 +31,14 @@ class DNN(Base):
             ])
         super().set_args_params()
         
-    def set_model_params(self, model_params):
-        super().set_model_params(model_params, default_model_params)
+    def set_model_params(self, model_params, _default_model_params={}):
+        super().set_model_params(model_params, t.get_model_params(_default_model_params, default_model_params), is_build_model=True)
+
+    def build_model(self):
         self.layer_units.insert(0, self.dim_x)
         self.loss_funcs['loss'] = loss_funcs[self.loss_func]
         if self.monitor != 'loss':
             self.loss_funcs[self.monitor] = loss_funcs[self.monitor]
-        self.build_model()
-        self.optimizer = optim.Adadelta(self.parameters(), rho=0.95, eps=1e-7)
-
-    def build_model(self):
         self.sequential = nn.Sequential()
         if self.dropouts[0]>0:
             self.sequential.add_module('dropout_i', nn.Dropout(self.dropouts[0]))
@@ -57,8 +55,9 @@ class DNN(Base):
             self.dim_y = self.layer_units[-1]
         if self.spectral:
             self.apply(t.spectral_norm)
+        self.optimizer = optim.Adadelta(self.parameters(), rho=0.95, eps=1e-7)
 
-def train_dnn(args, Ds, dnn=None, model_params={}, train_params={}):
+def train_dnn(args, Ds, dnn=None, model_params={}, train_params={}, func=None, func_params={}):
     if not dnn:
         dnn = DNN
     for e in range(args.trails):
@@ -74,5 +73,11 @@ def train_dnn(args, Ds, dnn=None, model_params={}, train_params={}):
             ).to(t.device)
         print(model)
         model.set_datasets(Ds)
-        model.train(batch_size=args.batch_size, epochs=args.epochs, initialize=True, **train_params)
+        if hasattr(args, 'load_model'):
+            if args.load_model:
+                model.load_model()
+                model.apply_func(func, func_params)
+                continue
+        model.train(batch_size=args.batch_size, epochs=args.epochs, **train_params)
+        model.apply_func(func, func_params)
     return model

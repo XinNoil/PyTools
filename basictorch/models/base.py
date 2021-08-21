@@ -27,24 +27,24 @@ class Base(nn.Module): #, metaclass=abc.ABCMeta
         for param in args_params:
             if param not in self.args_params:
                 self.args_params.append(param)
-
-    def set_model_params(self, model_params, default_model_params={}):
+    
+    # set_model_params will be called in the end of __init__ function
+    #   - model_params from calling
+    #   - default_model_params from this class
+    #   - is_build_model call self.build_model() or not
+    def set_model_params(self, model_params, default_model_params={}, is_build_model=False):
         for param in self.args_params:
             if hasattr(self.args, param):
                 default_model_params[param] = self.args.__dict__[param].copy() if isinstance(self.args.__dict__[param], list) else self.args.__dict__[param]
-        self.model_params = self.get_model_params(model_params, default_model_params)
+        self.model_params = t.get_model_params(model_params, default_model_params)
         for param in model_params:
             self.__dict__[param] = model_params[param].copy() if isinstance(model_params[param], list) else model_params[param]
         if len(self.args_params):
             print('%s args_params: %s' % (self.name, str(self.args_params)))
         print('%s model_params: %s' % (self.name, str(self.model_params)))
+        if is_build_model:
+            self.build_model()
     
-    def get_model_params(self, model_params, default_model_params):
-        for param in default_model_params:
-            if param not in model_params:
-                model_params[param] = default_model_params[param]
-        return model_params
-            
     def build_model(self):
         self.sequential = nn.Sequential()
 
@@ -222,6 +222,17 @@ class Base(nn.Module): #, metaclass=abc.ABCMeta
             head = 'run_i,'+head
             varList.insert(0, self.args.run_i)
         t.save_evaluate(self.args.output, self.name, head, varList)
+    
+    def apply_func(self, func=None, func_params={}):
+        if func:
+            func(self, **func_params)
+    
+    # abandoned function, use basictorch.tools.get_model_params instead
+    def get_model_params(self, model_params, _default_model_params):
+        for param in _default_model_params:
+            if param not in model_params:
+                model_params[param] = _default_model_params[param]
+        return model_params
 
 class SemiBase(Base):
     def on_epoch_begin(self, epoch):

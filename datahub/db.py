@@ -288,7 +288,7 @@ class DB(object):
                         self.__dict__[k]=list_mask(v, p)
                     else:
                         self.__dict__[k]=v[p]
-    
+
     def normalize_rssis(self):
         self.rssis = normalize_rssis(self.rssis)
 
