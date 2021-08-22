@@ -39,8 +39,6 @@ class Base(nn.Module): #, metaclass=abc.ABCMeta
         self.model_params = t.get_model_params(model_params, default_model_params)
         for param in model_params:
             self.__dict__[param] = model_params[param].copy() if isinstance(model_params[param], list) else model_params[param]
-        if len(self.args_params):
-            print('%s args_params: %s' % (self.name, str(self.args_params)))
         print('%s model_params: %s' % (self.name, str(self.model_params)))
         if is_build_model:
             self.build_model()

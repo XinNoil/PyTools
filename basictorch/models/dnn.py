@@ -25,9 +25,10 @@ class dnn(nn.Module):
         return self.out_layer(x)
 
 class DNN(Base):
+    # priority: model_params > args_params > default_model_params
     def set_args_params(self):
         self._set_args_params([
-            'layer_units','activations','out_activation','dropouts','loss_func','monitor','spectral'
+            'layer_units','activations','out_activation','dropouts','loss_func','monitor'
             ])
         super().set_args_params()
         
