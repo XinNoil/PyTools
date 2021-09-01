@@ -51,3 +51,7 @@ def merge_dict(d1, d2):
     d3.update(d1)
     d3.update(d2)
     return d3
+
+#tuple
+def tuple_ind(l, ind):
+    return (l[i] for i in ind)

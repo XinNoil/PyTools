@@ -100,9 +100,15 @@ class DB(object):
         self.rssis,self.rssis_std = np_avg_std(self.rssis, self.RecordsNums)
         self.RecordsNums = np.ones(len(self))
     
-    def avg_rssis(self):
-        self.rssis = np_avg(self.rssis, self.RecordsNums)
-        self.cdns  = np_avg(self.cdns, self.RecordsNums)
+    def avg_rssis(self, is_new=False):
+        if is_new:
+            return DB(rssis=np_avg(self.rssis, self.RecordsNums), cdns = np_avg(self.cdns, self.RecordsNums), bssids=self.bssids)
+        else:
+            self.rssis = np_avg(self.rssis, self.RecordsNums)
+            self.cdns  = np_avg(self.cdns, self.RecordsNums)
+    
+    def repeat_avg(self):
+        self.rssis_avg = np_repeat(self.rssis_avg, self.RecordsNums)
 
     def filename(self, postfix=None, ext=None):
         filename = self.data_name
@@ -260,6 +266,10 @@ class DB(object):
         elif feature_mode == 'RMM':
             return np.hstack((self.mags, normalize_rssis(self.rssis) if np.max(self.rssis)<0 else self.rssis))
     
+    def get_avg_feature(self, feature_mode='R'):
+        if feature_mode == 'R':
+            return normalize_rssis(self.rssis_avg) if np.max(self.rssis_avg)<0 else self.rssis_avg
+
     def get_label(self, label_mode=None):
         if label_mode and hasattr(self, label_mode):
             return self.__dict__[label_mode]
@@ -288,6 +298,7 @@ class DB(object):
                         self.__dict__[k]=list_mask(v, p)
                     else:
                         self.__dict__[k]=v[p]
+        return p
 
     def normalize_rssis(self):
         self.rssis = normalize_rssis(self.rssis)
@@ -318,8 +329,16 @@ class SubDB(object):
         return self.db.cdns[self.mask]
     
     @property
+    def bssids(self):
+        return self.db.bssids
+
+    @property
     def rp_no(self):
         return self.db.rp_no[self.mask]
+    
+    def shuffle(self):
+        p = self.db.shuffle()
+        self.mask = self.mask[p] # only support logical mask
     
     def devs(self):
         return self.db.devs()
@@ -329,6 +348,9 @@ class SubDB(object):
     
     def get_feature(self, feature_mode='R'):
         return self.db.get_feature(feature_mode)[self.mask]
+    
+    def get_avg_feature(self, feature_mode='R'):
+        return self.db.get_avg_feature(feature_mode)[self.mask]
     
     def get_label(self, label_mode=None):
         return self.db.get_label(label_mode)[self.mask]

@@ -60,6 +60,15 @@ def get_model_params(model_params, default_model_params):
             model_params[param] = default_model_params[param]
     return model_params
 
+def get_param(dict_, param):
+    return dict_[param].copy() if isinstance(dict_[param], list) else dict_[param]
+
+def merge_params(params, _params):
+    for param in _params:
+        if param not in params:
+            params[param] = _params[param]
+    return params
+
 # torch models tools
 def get_layers(input_dim, layer_units, Linear = torch.nn.Linear):
     layers = torch.nn.ModuleList()
@@ -138,7 +147,10 @@ def load_model(model, args=None):
     if not args:
         args = model.args
     if os.path.exists(get_filename(args, 'model_%s' % model.name, 'json', by_exp_no=False)):
-        model.set_model_params(load_json(get_filename(args, 'model_%s' % model.name, 'json', by_exp_no=False)))
+        if hasattr(model, 'set_model_params'):
+            model.set_model_params(load_json(get_filename(args, 'model_%s' % model.name, 'json', by_exp_no=False)))
+        # else:
+        #     model.set_model_params(load_json(get_filename(args, 'model_%s' % model.name, 'json', by_exp_no=False)))
         model.to(device)
     model.load_state_dict(torch.load(get_filename(args, 'model_%s' % model.name, 'pth')))
 
@@ -161,6 +173,8 @@ def save_evaluate(output, name, head, varList):
     txt=','.join(list(map(lambda x:str(x),varList)))
     eval_file.writelines(txt+'\n')
     eval_file.close()
+    print(head)
+    print(txt)
 
 def save_t_SNE(args, Xs, labels, name='t-SNE', n_components=2, fontsize=15, color='base', legend=True):
     if color in colors_names:
