@@ -59,6 +59,12 @@ class DB(object):
                 self.process_data(bssids, avg, save_h5_file, event, is_save_h5, merge_method)
         self.dev = dev
 
+    def save_h5(self, filename=None, avg=False):
+        if filename is None:
+            save_h5(self.save_name(avg), self)
+        else:
+            save_h5(filename, self)
+
     def __len__(self):
         return self.rssis.shape[0]  
 
