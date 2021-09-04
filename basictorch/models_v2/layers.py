@@ -165,3 +165,19 @@ class DeepGP(AbstractDeepGP):
     def predict(self, x):
         with gpytorch.settings.fast_computations(log_prob=False, solves=False), torch.no_grad():
             return self(x)
+
+def random_drop(x, p):
+    m = torch.rand_like(x, dtype=torch.float16)
+    x = x * (m>p)
+    return x
+
+class RandomDrop(nn.Module):
+    def __init__(self, p):
+        super().__init__()
+        self.p = p
+        if p < 0 or p > 1:
+            raise ValueError("Random drop probability has to be between 0 and 1, "
+                             "but got {}".format(p))
+
+    def forward(self, x):
+        return random_drop(x, self.p)

@@ -72,6 +72,7 @@ def train_dnn(args, Ds, dnn=None, model_params={}, train_params={}, func=None, f
             if args.load_model:
                 model.load_model()
                 model.train(batch_size=args.batch_size, epochs=0)
+                model.args.load_model = True
                 model.apply_func(func, func_params)
                 continue
         model.train(batch_size=args.batch_size, epochs=args.epochs, **train_params)
