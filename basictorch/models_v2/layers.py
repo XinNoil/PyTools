@@ -172,12 +172,13 @@ def random_drop(x, p):
     return x
 
 class RandomDrop(nn.Module):
-    def __init__(self, p):
-        super().__init__()
-        self.p = p
+    def __init__(self, p, random_p=False):
         if p < 0 or p > 1:
             raise ValueError("Random drop probability has to be between 0 and 1, "
                              "but got {}".format(p))
+        super().__init__()
+        self.p = p
+        self.random_p = random_p
 
     def forward(self, x):
-        return random_drop(x, self.p)
+        return random_drop(x, torch.rand(x.shape[0], 1, device=x.device)*self.p if self.random_p else self.p)

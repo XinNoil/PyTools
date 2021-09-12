@@ -219,7 +219,7 @@ class Base(nn.Module):
     def save_curve(self):
         t.curve_plot(self.history, self.args, curve_name='curve_%s' % self.name)
 
-    def save_evaluate(self):
+    def save_evaluate(self, postfix=''):
         if self.validation:
             head = 'data_ver,data_name,exp_no,epochs,batch_size,%s,%s,fit_time,val_epoch\n' % (self.monitor, 'test_%s'%self.test_monitor)
             varList = [self.args.data_ver, self.args.data_name, self.args.exp_no, self.epochs,self.batch_size,\
@@ -231,7 +231,7 @@ class Base(nn.Module):
         if hasattr(self.args, 'run_i'):
             head = 'run_i,'+head
             varList.insert(0, self.args.run_i)
-        t.save_evaluate(self.args.output, self.name, head, varList)
+        t.save_evaluate(self.args.output, '%s%s'%(self.name,postfix), head, varList)
     
     def apply_func(self, func=None, func_params={}):
         if func:

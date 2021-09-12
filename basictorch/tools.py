@@ -146,12 +146,12 @@ def save_model(model):
 def load_model(model, args=None):
     if not args:
         args = model.args
-    if os.path.exists(get_filename(args, 'model_%s' % model.name, 'json', by_exp_no=False)):
-        if hasattr(model, 'set_model_params'):
-            model.set_model_params(load_json(get_filename(args, 'model_%s' % model.name, 'json', by_exp_no=False)))
-        # else:
-        #     model.set_model_params(load_json(get_filename(args, 'model_%s' % model.name, 'json', by_exp_no=False)))
-        model.to(device)
+    # if os.path.exists(get_filename(args, 'model_%s' % model.name, 'json', by_exp_no=False)):
+    #     if hasattr(model, 'set_model_params'):
+    #         model.set_model_params(load_json(get_filename(args, 'model_%s' % model.name, 'json', by_exp_no=False)))
+    #     else:
+    #         model.set_model_params(load_json(get_filename(args, 'model_%s' % model.name, 'json', by_exp_no=False)))
+    model.to(device)
     model.load_state_dict(torch.load(get_filename(args, 'model_%s' % model.name, 'pth')))
 
 def time_format(t):
