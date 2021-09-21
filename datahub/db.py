@@ -130,7 +130,7 @@ class DB(object):
     def zip_name(self):
         return self.filename(ext='zip')
     
-    def save_name(self, avg):
+    def save_name(self, avg=False):
         return self.filename(postfix=self.dbtype+'_avg', ext='h5') if avg else self.filename(postfix=self.dbtype, ext='h5')
     
     def csv_name(self):
@@ -451,3 +451,41 @@ def cut_rssis(rssis, rss_range=[0,1]):
     rssis[rssis<rss_range[0]] = rss_range[0]
     rssis[rssis>rss_range[1]] = rss_range[1]
     return rssis
+
+def cut_time_db(db, cut_num):
+    ind = np.zeros(db.rssis.shape[0], dtype=bool)
+    start_ind = np.cumsum(db.RecordsNums) - db.RecordsNums
+    for i in range(cut_num):
+        ind[start_ind+i] = True
+    db.RecordsNums = np.zeros_like(db.RecordsNums) + cut_num
+    db.cdns = db.cdns[ind]
+    db.rssis = db.rssis[ind]
+    db.rp_no = db.rp_no[ind]
+    db.rssis_avg = np_avg(db.rssis, db.RecordsNums)
+
+def aug_db_i(db, aug_num, i):
+    rssis = db.rssis[db.start_ind[i]:db.end_ind[i]]
+    cdn = db.cdns[db.start_ind[i]]
+    rp_no = db.rp_no[db.start_ind[i]]
+    RecordsNum = db.RecordsNums[i]
+    
+    aug_ind_0 = np.random.randint(0, RecordsNum, size=(aug_num, rssis.shape[1]))
+    aug_ind_1 = np.repeat(np.expand_dims(np.arange(rssis.shape[1]), axis=0),aug_num,axis=0)
+    aug_rssis = rssis[aug_ind_0, aug_ind_1]
+    aug_cdns = np.repeat(np.expand_dims(cdn,axis=0), aug_num, axis=0)
+    aug_rp_no = np.repeat(rp_no, aug_num)
+    
+    db.rssis = np.insert(db.rssis, db.end_ind[i], aug_rssis, axis=0)
+    db.cdns = np.insert(db.cdns, db.end_ind[i], aug_cdns, axis=0)
+    db.rp_no = np.insert(db.rp_no, db.end_ind[i], aug_rp_no)
+    db.RecordsNums[i] = db.RecordsNums[i]+aug_num
+
+def aug_db(db, aug_num):
+    set_ind(db)
+    for i in reversed(range(db.RecordsNums.shape[0])): # db.RecordsNums.shape[0]
+        aug_db_i(db, aug_num, i)
+    set_ind(db)
+    
+def set_ind(db):
+    db.end_ind = np.cumsum(db.RecordsNums)
+    db.start_ind = db.end_ind - db.RecordsNums

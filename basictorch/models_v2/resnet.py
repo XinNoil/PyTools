@@ -1,4 +1,4 @@
-from basictorch.models.base import *
+from basictorch.models_v2.base import *
 from .layers import View
 
 # from torchvision.models import Bottleneck, BasicBlock, conv1x1, conv3x3
@@ -124,7 +124,7 @@ class ResNet(Base):
         })
         super().set_params(model_params)
 
-    def build_model(self):
+    def build_model(self, is_set_optim=True):
         self.block = block_dict[self.block]
         self.loss_funcs['loss'] = loss_funcs[self.loss_func]
         self.dilation = 1
@@ -134,7 +134,7 @@ class ResNet(Base):
         self.pooling = poolings[self.pooling]
         self.base_width = self.dim
 
-        self.sequential = nn.Sequential()
+        self.sequential     = nn.Sequential()
         if self.dim_x:
             self.sequential.add_module('reshape', nn.Linear(self.dim_x, self.cons[0]*self.dim*self.dim))
         self.sequential.add_module('view', View(-1, self.cons[0], self.dim, self.dim))
@@ -165,13 +165,13 @@ class ResNet(Base):
             self.sequential.add_module(self.out_activation, act_modules[self.out_activation])
         if self.spectral:
             self.apply(t.spectral_norm)
-        
-        self.optimizer = optim.Adadelta(self.parameters(), rho=0.95, eps=1e-7)
+        if is_set_optim:
+            self.optimizer = optim.Adadelta(self.parameters(), rho=0.95, eps=1e-7)
 
-    def forward(self, x):
-        for m in self.sequential:
-            x = m(x)
-        return x
+    # def forward(self, x):
+    #     for m in self.sequential:
+    #         x = m(x)
+    #     return x
 
     def initialize_model(self):
         super().initialize_model()
