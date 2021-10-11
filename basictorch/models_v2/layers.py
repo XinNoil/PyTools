@@ -14,6 +14,29 @@ from gpytorch.models import AbstractVariationalGP, GP
 from gpytorch.models.deep_gps import AbstractDeepGPLayer, AbstractDeepGP, DeepLikelihood
 from gpytorch.likelihoods import MultitaskGaussianLikelihood, GaussianLikelihood
 
+acts = {
+    'relu':torch.relu,
+    'tanh':torch.tanh,
+    'sigmoid':torch.sigmoid,
+    'leakyrelu':torch.nn.functional.leaky_relu,
+    'elu':torch.nn.functional.elu,
+    'softmax':torch.softmax,
+}
+
+act_modules = {
+    'relu':nn.ReLU(),
+    'tanh':nn.Tanh(),
+    'sigmoid':nn.Sigmoid(),
+    'leakyrelu':torch.nn.modules.LeakyReLU(),
+    'elu':nn.ELU(),
+    'softmax':torch.nn.Softmax(),
+}
+
+poolings={
+    'max':nn.MaxPool2d(2),
+    'avg':nn.AvgPool2d(2),
+}
+
 def softplus(x):
     """ Positivity constraint """
     softplus = torch.log(1+torch.exp(x))

@@ -19,12 +19,16 @@ class Setting(object):
 
 class DB(object):
     # bssids, cdns, rssis, mags, RecordsNums
-    def __init__(self, data_path='', data_name='', dbtype='db', cdns=[], wfiles=[], avg=False, bssids=[], save_h5_file=False, event=False, is_load_h5=True, is_save_h5=True, start_time=0, rssis=[], mags=[], RecordsNums=[], filename='', dev=0, merge_method='all'):
-        if len(rssis):
+    def __init__(self, data_path='', data_name='', dbtype='db', cdns=[], wfiles=[], avg=False, \
+                bssids=[], save_h5_file=False, event=False, is_load_h5=True, is_save_h5=True, \
+                start_time=0, rssis=[], mags=[], RecordsNums=[], filename='', dev=0, is_empty=False, \
+                merge_method='all', is_print=True, rp_no=[]):
+        if len(rssis) or is_empty:
             self.bssids = bssids
             self.cdns = cdns
             self.rssis = rssis
             self.mags = mags
+            self.rp_no = rp_no
             if len(RecordsNums):
                 self.RecordsNums = RecordsNums
             else:
@@ -58,15 +62,22 @@ class DB(object):
                 self.wfiles = wfiles
                 self.process_data(bssids, avg, save_h5_file, event, is_save_h5, merge_method)
         self.dev = dev
+        if is_print:
+            self.print()
 
     def save_h5(self, filename=None, avg=False):
         if filename is None:
             save_h5(self.save_name(avg), self)
+            print('save to %s' % self.save_name(avg))
         else:
             save_h5(filename, self)
+            print('save to %s' % filename)
 
     def __len__(self):
-        return self.rssis.shape[0]  
+        if type(self.rssis) == list:
+            return len(self.rssis)
+        else: # numpy array
+            return self.rssis.shape[0]  
 
     def load_csv(self, avg):
         desc = load_json(os.path.join(self.data_path, '%s_data_description.json'%self.data_name))
@@ -114,6 +125,8 @@ class DB(object):
             self.cdns  = np_avg(self.cdns, self.RecordsNums)
     
     def repeat_avg(self):
+        if not hasattr(self, 'rssis_avg'):
+            self.rssis_avg = np_avg(self.rssis, self.RecordsNums)
         self.rssis_avg = np_repeat(self.rssis_avg, self.RecordsNums)
 
     def filename(self, postfix=None, ext=None):
@@ -255,7 +268,7 @@ class DB(object):
                     self.__dict__[k]=v[mask]
     
     def set_bssids(self, bssids):
-        if bssids:
+        if len(bssids):
             self.rssis = set_bssids(self.rssis, self.bssids, bssids)
             self.bssids = bssids
     
@@ -263,6 +276,9 @@ class DB(object):
         if self.cdns.shape[0]!=cdns.shape[0]:
             return False
         return not np.any(np.abs(self.cdns-cdns)>0.01)
+    
+    def devs(self):
+        return [self.dev]
     
     def get_feature(self, feature_mode='R'):
         if feature_mode == 'R':
@@ -277,13 +293,12 @@ class DB(object):
             return normalize_rssis(self.rssis_avg) if np.max(self.rssis_avg)<0 else self.rssis_avg
 
     def get_label(self, label_mode=None):
-        if label_mode and hasattr(self, label_mode):
+        if label_mode=='db_i':
+            return np.zeros(len(self))+self.db_i
+        elif label_mode and hasattr(self, label_mode):
             return self.__dict__[label_mode]
         else:
             return self.cdns
-    
-    def devs(self):
-        return [self.dev]
     
     def get_dev(self, dev_dict, embedding=False):
         if not embedding:
@@ -339,8 +354,19 @@ class SubDB(object):
         return self.db.bssids
 
     @property
+    def RecordsNums(self):
+        start_ind = np.cumsum(self.db.RecordsNums) - self.db.RecordsNums
+        return self.db.RecordsNums[self.mask[start_ind]]
+
+    @property
     def rp_no(self):
         return self.db.rp_no[self.mask]
+    
+    def set_bssids(self, bssids):
+        self.db.set_bssids(bssids)
+    
+    def new(self):
+        return DB(cdns=self.cdns, rssis=self.rssis, bssids=self.bssids, RecordsNums=self.RecordsNums, rp_no=self.rp_no)
     
     def shuffle(self):
         p = self.db.shuffle()
@@ -370,8 +396,19 @@ class SubDB(object):
             return np.zeros(len(self), dtype=np.int)+dev_dict[self.db.dev]
 
 class DBs(object):
-    def __init__(self, dbs):
+    def __init__(self, dbs, set_bssids=False, bssids=None):
         self.dbs = dbs
+        if set_bssids:
+            if bssids is not None:
+                self.bssids = bssids
+            else:
+                self.bssids = list(set(list_con([db.bssids for db in self.dbs])))
+            for db in self.dbs:
+                 db.set_bssids(self.bssids)
+        else:
+            bssids = self.dbs[0].bssids
+        for db,i in zip(self.dbs, range(len(dbs))):
+            db.db_i = i
     
     @property
     def rssis(self):
@@ -383,7 +420,12 @@ class DBs(object):
     
     @property
     def rp_no(self):
-        return np.vstack(tuple([db.rp_no for db in self.dbs]))
+        base = np.insert(np.cumsum([np.max(db.rp_no)+1 for db in self.dbs])[:-1],0,0)
+        return np.hstack(tuple([db.rp_no+_t for db,_t in zip(self.dbs, base)]))
+    
+    @property
+    def RecordsNums(self):
+        return np.hstack(tuple([db.RecordsNums for db in self.dbs]))
     
     def devs(self):
         return [db.dev for db in self.dbs]
@@ -407,6 +449,9 @@ class DBs(object):
     def normalize_rssis(self):
         for db in self.dbs:
             db.normalize_rssis()
+    
+    def new(self):
+        return DB(cdns=self.cdns, rssis=self.rssis, bssids=self.bssids, RecordsNums=self.RecordsNums, rp_no=self.rp_no)
 
 # class avgDB(object):
 #     def __init__(self, dbs):
@@ -452,18 +497,20 @@ def cut_rssis(rssis, rss_range=[0,1]):
     rssis[rssis>rss_range[1]] = rss_range[1]
     return rssis
 
-def cut_time_db(db, cut_num):
+def cut_record_db(db, cut_num):
     ind = np.zeros(db.rssis.shape[0], dtype=bool)
     start_ind = np.cumsum(db.RecordsNums) - db.RecordsNums
+    end_ind = np.cumsum(db.RecordsNums)-1
     for i in range(cut_num):
-        ind[start_ind+i] = True
-    db.RecordsNums = np.zeros_like(db.RecordsNums) + cut_num
+        tmp_ind = np.min(np.stack((start_ind+i, end_ind)), axis=0)
+        ind[tmp_ind] = True
+    db.RecordsNums = np.min(np.stack((db.RecordsNums, np.zeros_like(db.RecordsNums)+cut_num)), axis=0)
     db.cdns = db.cdns[ind]
     db.rssis = db.rssis[ind]
     db.rp_no = db.rp_no[ind]
     db.rssis_avg = np_avg(db.rssis, db.RecordsNums)
 
-def aug_db_i(db, aug_num, i):
+def aug_db_i(db, aug_num, i, is_new=False, newdb=None):
     rssis = db.rssis[db.start_ind[i]:db.end_ind[i]]
     cdn = db.cdns[db.start_ind[i]]
     rp_no = db.rp_no[db.start_ind[i]]
@@ -474,17 +521,33 @@ def aug_db_i(db, aug_num, i):
     aug_rssis = rssis[aug_ind_0, aug_ind_1]
     aug_cdns = np.repeat(np.expand_dims(cdn,axis=0), aug_num, axis=0)
     aug_rp_no = np.repeat(rp_no, aug_num)
-    
-    db.rssis = np.insert(db.rssis, db.end_ind[i], aug_rssis, axis=0)
-    db.cdns = np.insert(db.cdns, db.end_ind[i], aug_cdns, axis=0)
-    db.rp_no = np.insert(db.rp_no, db.end_ind[i], aug_rp_no)
-    db.RecordsNums[i] = db.RecordsNums[i]+aug_num
+    if is_new:
+        if len(newdb):
+            newdb.rssis = np.vstack((newdb.rssis, aug_rssis))
+            newdb.cdns = np.vstack((newdb.cdns, aug_cdns))
+            newdb.rp_no = np.hstack((newdb.rp_no, aug_rp_no))
+        else:
+            newdb.rssis = aug_rssis
+            newdb.cdns = aug_cdns
+            newdb.rp_no = aug_rp_no
+    else:
+        db.rssis = np.insert(db.rssis, db.end_ind[i], aug_rssis, axis=0)
+        db.cdns = np.insert(db.cdns, db.end_ind[i], aug_cdns, axis=0)
+        db.rp_no = np.insert(db.rp_no, db.end_ind[i], aug_rp_no)
+        db.RecordsNums[i] = db.RecordsNums[i]+aug_num
 
-def aug_db(db, aug_num):
+def aug_db(db, aug_num, is_new=False):
     set_ind(db)
-    for i in reversed(range(db.RecordsNums.shape[0])): # db.RecordsNums.shape[0]
-        aug_db_i(db, aug_num, i)
-    set_ind(db)
+    if is_new:
+        newdb = DB(is_empty=True)
+        for i in range(db.RecordsNums.shape[0]):
+            aug_db_i(db, aug_num, i, is_new=True, newdb=newdb)            
+        newdb.RecordsNums = np.zeros_like(db.RecordsNums)+aug_num
+        return newdb
+    else:
+        for i in reversed(range(db.RecordsNums.shape[0])):
+            aug_db_i(db, aug_num, i)
+        set_ind(db)
     
 def set_ind(db):
     db.end_ind = np.cumsum(db.RecordsNums)

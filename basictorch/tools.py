@@ -176,7 +176,7 @@ def save_evaluate(output, name, head, varList):
     print(head)
     print(txt)
 
-def save_t_SNE(args, Xs, labels, name='t-SNE', n_components=2, fontsize=15, color='base', legend=True):
+def save_t_SNE(args, Xs, labels, name='t-SNE', n_components=2, fontsize=15, color='base', legend=True, markersize=12, filename=None):
     if color in colors_names:
         colors = colors_names[color]
     else:
@@ -192,14 +192,17 @@ def save_t_SNE(args, Xs, labels, name='t-SNE', n_components=2, fontsize=15, colo
     plt.figure()
     for i,xs_embedded in zip(range(len(Xs)), Xs_embedded):
         # plt.plot(xs_embedded[:,0], xs_embedded[:,1], colors[i], label=labels[i])
-        plt.scatter(xs_embedded[:,0], xs_embedded[:,1], c=colors[i], marker='.', label=labels[i])
+        plt.scatter(xs_embedded[:,0], xs_embedded[:,1], c=colors[i], marker='.', label=labels[i], s=markersize)
     plt.tick_params(labelsize=fontsize)
     plt.tight_layout()
     plt.xlabel('z1',get_font(fontsize))
     plt.ylabel('z2',get_font(fontsize))
     if legend:
         plt.legend(loc="upper right",prop=get_font(fontsize))
-    plt.savefig(get_filename(args, name, 'png'))
+    if filename:
+        plt.savefig(filename)
+    else:
+        plt.savefig(get_filename(args, name, 'png'))
 
 def save_t_SNE_ani(args, Xs, labels, name='t-SNE', n_components=2, fontsize=15, color='base', legend=True):
     if color in colors_names:

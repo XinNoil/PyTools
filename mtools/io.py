@@ -32,6 +32,7 @@ def save_json(filename, obj, ensure_ascii=True):
     str_json=tojson(obj, ensure_ascii)
     with open(filename,'w') as f:
         f.write(str_json)
+        f.close()
 
 def save_h5(filename, obj):
     f=h5py.File(filename,'w')

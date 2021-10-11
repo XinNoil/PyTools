@@ -3,15 +3,16 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 import basictorch.tools as t
-from mtools import list_ind,tuple_ind
-from .losses import loss_funcs
+from mtools import list_ind, tuple_ind
+from .losses import loss_funcs, get_loss_func
+from .layers import acts, act_modules, poolings
 
 class Base(nn.Module):
     def __init__(self, name, args, set_params=True, **model_params):
         super().__init__()
         self.name = name
         self.args = args # require args.output, args.data_name, args.data_ver, args.exp_no
-        self.loss_funcs = {}
+        self._loss_funcs = {}
         self.default_params = {}
         self.args_params = []
         if set_params:
@@ -22,6 +23,14 @@ class Base(nn.Module):
     
     def add_args_params(self, args_params):
         self.args_params = list(set(self.args_params + args_params))
+    
+    @property
+    def loss_funcs(self):
+        return self._loss_funcs
+    
+    @loss_funcs.setter
+    def loss_funcs(self, value):
+        self._loss_funcs = value
     
     # def set_params(self, model_params):
         # self.add_default_params(default_params)
@@ -39,6 +48,11 @@ class Base(nn.Module):
         for param in self.model_params:
             self.__dict__[param] = t.get_param(self.model_params, param)
         self.build_model()
+    
+    def set_loss_funcs(self, loss_func=None):
+        if loss_func is not None:
+            self.loss_func = loss_func
+        self.loss_funcs['loss'] = get_loss_func(self.loss_func, self.args)
     
     def build_model(self):
         self.sequential = nn.Sequential()
@@ -140,6 +154,9 @@ class Base(nn.Module):
     def get_losses(self, batch_data, batch_i=None):
         inputs, labels = self.unpack_batch(batch_data, batch_i)
         outputs = self(inputs)
+        return self._get_losses(labels, outputs)
+    
+    def _get_losses(self, labels, outputs):
         losses={}
         for r in self.loss_funcs:
             losses[r] = self.loss_funcs[r](outputs, labels)
@@ -184,7 +201,7 @@ class Base(nn.Module):
         if self.validation:
             if not losses:
                 self.on_epoch_begin(-1)
-                val_losses = self.get_dataset_losses(self.datasets.val_dataset)
+                val_losses = self.get_dataset_losses(self.datasets.val_dataset, eval_dataset='val')
                 if self.monitor in val_losses:
                     self.monitor_loss = val_losses[self.monitor]+1
                     self.on_epoch_end()
@@ -247,16 +264,11 @@ class Base(nn.Module):
 class SemiBase(Base):
     def on_epoch_begin(self, epoch):
         super().on_epoch_begin(epoch)
-        self.data_loader = self.datasets.get_train_loader()
         self.unlab_loader = self.datasets.get_unlab_loader(len(self.data_loader))
     
-    def on_epoch_end(self):
-        super().on_epoch_end()
-        # if torch.cuda.is_available():
-        #     torch.cuda.empty_cache()
-
     def train_on_epoch(self):
         for (b, batch_data_l),(b, batch_data_u) in zip(enumerate(self.data_loader), enumerate(self.unlab_loader)):
+            self.b = b
             batch_data = batch_data_l+batch_data_u
             losses = self.train_on_batch(b, batch_data)
             self.print_batch(b, losses)
@@ -273,29 +285,3 @@ class SemiBase(Base):
         for r in self.loss_funcs:
             losses[r] = self.loss_funcs[r](outputs, labels)
         return losses
-    
-    def forward(self, x, x_u):
-        return self.sequential(x)
-
-acts = {
-    'relu':torch.relu,
-    'tanh':torch.tanh,
-    'sigmoid':torch.sigmoid,
-    'leakyrelu':torch.nn.functional.leaky_relu,
-    'elu':torch.nn.functional.elu,
-    'softmax':torch.softmax,
-}
-
-act_modules = {
-    'relu':nn.ReLU(),
-    'tanh':nn.Tanh(),
-    'sigmoid':nn.Sigmoid(),
-    'leakyrelu':torch.nn.modules.LeakyReLU(),
-    'elu':nn.ELU(),
-    'softmax':torch.nn.Softmax(),
-}
-
-poolings={
-    'max':nn.MaxPool2d(2),
-    'avg':nn.AvgPool2d(2),
-}

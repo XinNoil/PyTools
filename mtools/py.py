@@ -35,6 +35,9 @@ def list_ind(l, ind):
 def list_avg(l):
     return np.mean(np.array(l),0).tolist()
 
+def list_remove(l, v):
+    return list(filter(lambda a: a != v, l))
+
 def intersection(a, b):
     c = list(set(a).intersection(b))
     i_a = [a.index(x) for x in c]

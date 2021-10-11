@@ -30,9 +30,9 @@ class DNN(Base):
 
     def build_model(self, is_set_optim=True):
         self.layer_units.insert(0, self.dim_x)
-        self.loss_funcs['loss'] = loss_funcs[self.loss_func]
+        self.set_loss_funcs()
         if self.monitor != 'loss':
-            self.loss_funcs[self.monitor] = loss_funcs[self.monitor]
+            self.loss_funcs[self.monitor] = get_loss_func(self.loss_func, self.args)
         self.sequential = nn.Sequential()
         if self.dropouts[0]>0:
             self.sequential.add_module('dropout_i', nn.Dropout(self.dropouts[0]))

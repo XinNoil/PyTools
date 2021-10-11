@@ -35,7 +35,7 @@ def mean_dis_loss(y, y_pred, sigma):
     return T.mean(dis_loss(y, y_pred, sigma))
 
 class Mean_dis_loss(object):
-    def __init__(self, sigma) -> None:
+    def __init__(self, sigma=None) -> None:
         super().__init__()
         self.sigma = sigma
     
@@ -128,6 +128,12 @@ loss_funcs={
     'mrkl':mean_rec_kl_loss,
     'wmse':wmse
 }
+
+def get_loss_func(loss_func, args=None):
+    if loss_func =='mdl':
+        return Mean_dis_loss(args.sigma)
+    else:
+        return loss_funcs[loss_func]
 
 # BCELoss = T.nn.BCELoss()
 
