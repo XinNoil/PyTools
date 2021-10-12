@@ -153,24 +153,22 @@ class DB(object):
         return self.filename(postfix='pre')
     
     def bssids_list_name(self):
-        return os.path.join(self.pre_path(), 'bssids_list.json')
+        return os.path.join(self.pre_path(), '%s_%s_bssids_list.json'%(self.data_name, self.dbtype))
     
     def max_rssis_list_name(self):
-        return os.path.join(self.pre_path(), 'max_rssis_list.json')
+        return os.path.join(self.pre_path(), '%s_%s_max_rssis_list.json'%(self.data_name, self.dbtype))
     
-    def bssids_name(self):
-        return os.path.join(self.pre_path(), 'bssids.json')
+    def bssids_name(self, postfix=''):
+        return os.path.join(self.pre_path(), '%s_%s_bssids%s.json'%(self.data_name, self.dbtype, postfix))
         
     def process_data(self, bssids, avg, save_h5_file, event, is_save_h5, merge_method):
         if not os.path.exists(self.pre_path()):
             os.mkdir(self.pre_path())
-        self.process_wifi(avg, save_h5_file, event, merge_method)
+        self.process_wifi(bssids, avg, save_h5_file, event, merge_method)
         if (not avg) and len(self.cdns):
             self.cdns = np_repeat(self.cdns, self.RecordsNums)
         if is_save_h5:
             save_h5(self.save_name(avg), self)
-        if bssids:
-            self.set_bssids(bssids)
     
     def process_bssids_max_rssis(self):
         if os.path.exists(self.zip_name()):
@@ -183,23 +181,30 @@ class DB(object):
         save_json(self.max_rssis_list_name(), max_rssis_list)
         return bssids_list, max_rssis_list
     
-    def process_wifi(self, avg, save_h5_file, event, merge_method):
+    def process_wifi(self, _bssids, avg, save_h5_file, event, merge_method):
         if os.path.exists(self.bssids_list_name()) & os.path.exists(self.max_rssis_list_name()):
             bssids_list = load_json(self.bssids_list_name())
             max_rssis_list = load_json(self.max_rssis_list_name())
         else:
             bssids_list, max_rssis_list = self.process_bssids_max_rssis()
-        if os.path.exists(self.bssids_name()):
-            self.bssids = load_json(self.bssids_name())
+        if os.path.exists(self.bssids_name('unfilterd')):
+            self.bssids = load_json(self.bssids_name('unfilterd'))
+            self.process_rssis_all(avg, bssids_list, save_h5_file, event, merge_method)
+            bssids_filterd = load_json(self.bssids_name())
         else:
             bssids = [bssid for bssids in bssids_list for bssid in bssids]
-            max_rssis = [max_rssi for max_rssis in max_rssis_list for max_rssi in max_rssis]
-            bssids = list(set(list_mask(bssids, [max_rssi>=-80 for max_rssi in max_rssis])))
-            bssids.sort()
-            print('bssids size: %d'%len(bssids))
             self.bssids = bssids
-            save_json(self.bssids_name(), self.bssids)
-        self.process_rssis_all(avg, bssids_list, save_h5_file, event, merge_method)
+            save_json(self.bssids_name('unfilterd'), self.bssids)
+            self.process_rssis_all(avg, bssids_list, save_h5_file, event, merge_method)
+
+            max_rssis = [max_rssi for max_rssis in max_rssis_list for max_rssi in max_rssis]
+            bssids_filterd = list(set(list_mask(bssids, [max_rssi>=-80 for max_rssi in max_rssis])))
+            bssids_filterd.sort()
+            save_json(self.bssids_name(), self.bssids_filterd)
+        if _bssids:
+            self.set_bssids(_bssids)
+        else:
+            self.set_bssids(bssids_filterd)
     
     def scan_ssids(self):
         ssids_results = [get_ssids(filename, self.zip_name(), [], []) for filename in self.wfiles]
@@ -225,8 +230,6 @@ class DB(object):
             if (not os.path.exists(self.prefilename(filename))) & save_h5_file:
                 save_h5(self.prefilename(filename), wiFiData)
             rssis = set_bssids(wiFiData.rssis, bssids, self.bssids)
-            import pdb;pdb.set_trace()
-            
             if not event:
                 if merge_method=='nonzero':
                     rssis = np.array([np_mean_nonzero(x) for x in np.array_split(rssis, np.floor(len(rssis)/5.0), axis=0)])
