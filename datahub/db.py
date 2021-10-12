@@ -225,13 +225,15 @@ class DB(object):
             if (not os.path.exists(self.prefilename(filename))) & save_h5_file:
                 save_h5(self.prefilename(filename), wiFiData)
             rssis = set_bssids(wiFiData.rssis, bssids, self.bssids)
+            import pdb;pdb.set_trace()
+            
             if not event:
                 if merge_method=='nonzero':
                     rssis = np.array([np_mean_nonzero(x) for x in np.array_split(rssis, np.floor(len(rssis)/5.0), axis=0)])
                 elif merge_method=='all':
                     rssis = np.array([np.mean(x, 0) for x in np.array_split(rssis, np.floor(len(rssis)/5.0), axis=0)])
                 else:
-                    rssis = np.array(rssis, dtype='i')
+                    rssis = np.array(rssis)
                 rssis = rssis[self.start_time:]
             if avg:
                 if merge_method=='nonzero':
@@ -239,7 +241,7 @@ class DB(object):
                 elif merge_method=='all':
                     self.rssis.append(np.mean(rssis, axis=0))
                 else:
-                    rssis = np.array(rssis, dtype='i')
+                    rssis = np.array(rssis)
             else:
                 self.rssis.append(rssis)
                 self.RecordsNums.append(len(rssis))
@@ -293,9 +295,7 @@ class DB(object):
             return normalize_rssis(self.rssis_avg) if np.max(self.rssis_avg)<0 else self.rssis_avg
 
     def get_label(self, label_mode=None):
-        if label_mode=='db_i':
-            return np.zeros(len(self))+self.db_i
-        elif label_mode and hasattr(self, label_mode):
+        if label_mode and hasattr(self, label_mode):
             return self.__dict__[label_mode]
         else:
             return self.cdns
@@ -407,8 +407,6 @@ class DBs(object):
                  db.set_bssids(self.bssids)
         else:
             bssids = self.dbs[0].bssids
-        for db,i in zip(self.dbs, range(len(dbs))):
-            db.db_i = i
     
     @property
     def rssis(self):

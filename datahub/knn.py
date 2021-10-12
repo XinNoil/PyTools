@@ -50,3 +50,20 @@ def get_ap_mask_reduce(ap_num, aps):
     ap_mask = np.ones(ap_num, dtype=bool)
     ap_mask[aps] = False
     return ap_mask
+
+def _knn(fp, rssis, k=3):
+    k = int(min(k, fp.rssis.shape[0]))
+    D = np.sqrt(np.sum((fp.rssis-rssis)**2, axis=1))
+    ind = np.argsort(D)
+    return ind[:k]
+
+def _knn_cdn(fp, rssis, k=3):
+    k_ind=_knn(fp, rssis, k=k)
+    k_cdns = fp.cdns[k_ind,:]
+    return np.mean(k_cdns, axis=0)
+
+def _evaluate_knn(fp, td, k=3):
+    td_cdns = []
+    for rssis in td.rssis:
+        td_cdns.append(_knn_cdn(fp, rssis))
+    return np.linalg.norm(td_cdns-td.cdns, axis=1)
