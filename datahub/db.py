@@ -17,12 +17,17 @@ class Setting(object):
         self.cdns = self.cdns[mask]
         self.wfiles = self.wfiles[mask]
 
+def _print(s, is_print):
+    if is_print:
+        print(s)
+
 class DB(object):
     # bssids, cdns, rssis, mags, RecordsNums
     def __init__(self, data_path='', data_name='', dbtype='db', cdns=[], wfiles=[], avg=False, \
                 bssids=[], save_h5_file=False, event=False, is_load_h5=True, is_save_h5=True, \
                 start_time=0, rssis=[], mags=[], RecordsNums=[], filename='', dev=0, is_empty=False, \
                 merge_method='all', is_print=True, rp_no=[]):
+        _print('', is_print)
         if len(rssis) or is_empty:
             self.bssids = bssids
             self.cdns = cdns
@@ -38,32 +43,31 @@ class DB(object):
             self.data_name = data_name
             self.dbtype = dbtype
             self.start_time = start_time
-            print(data_name)
+            print('data name: %s'%data_name)
             if os.path.exists(filename) and is_load_h5:
-                print('load h5 file: %s'%filename)
+                _print('load h5 file: %s'%filename, is_print)
                 self.__dict__ = load_h5(filename)
                 self.set_bssids(bssids)
             elif os.path.exists(self.save_name(avg)) and is_load_h5:
-                print('load h5 file: %s'%self.save_name(avg))
+                _print('load h5 file: %s'%self.save_name(avg), is_print)
                 self.__dict__ = load_h5(self.save_name(avg))
                 self.set_bssids(bssids)
             elif os.path.exists(self.csv_name()):
-                print('load csv file: %s'%self.csv_name())
+                _print('load csv file: %s'%self.csv_name(), is_print)
                 self.load_csv(avg)
                 self.set_bssids(bssids)
             elif os.path.exists(self.zip_name()):
-                print('load zip file: %s'%self.zip_name())
+                _print('load zip file: %s'%self.zip_name(), is_print)
                 self.cdns = np.array(cdns)
                 self.wfiles = wfiles
                 self.process_data(bssids, avg, save_h5_file, event, is_save_h5, merge_method)
             elif os.path.exists(os.path.join(self.data_path, self.data_name)):
-                print('load txt file: %s'%os.path.join(self.data_path, self.data_name))
+                _print('load txt file: %s'%os.path.join(self.data_path, self.data_name), is_print)
                 self.cdns = np.array(cdns)
                 self.wfiles = wfiles
                 self.process_data(bssids, avg, save_h5_file, event, is_save_h5, merge_method)
         self.dev = dev
-        if is_print:
-            self.print()
+        self.print(is_print)
 
     def save_h5(self, filename=None, avg=False):
         if filename is None:
@@ -330,10 +334,12 @@ class DB(object):
     def unnormalize_rssis(self):
         self.rssis = unnormalize_rssis(self.rssis)
     
-    def print(self):
-        if hasattr(self, 'rssis'):
-            print('len: %d'%len(self))
-        print([(k, len(v) if type(v)==list else (v.shape if type(v)==np.ndarray else v)) for k,v in zip(self.__dict__.keys(), self.__dict__.values())])
+    def print(self, is_print=True):
+        if is_print:
+            if hasattr(self, 'rssis'):
+                print('len: %d'%len(self))
+            print([(k, len(v) if type(v)==list else (v.shape if type(v)==np.ndarray else v)) for k,v in zip(self.__dict__.keys(), self.__dict__.values())])
+            print('')
 
 class SubDB(object):
     def __init__(self, db, mask):
@@ -461,6 +467,17 @@ class DBs(object):
 
 #     # def __len__(self):
 #     #     return self.rssis.shape[0]
+
+def get_save_name(data_path, data_name, dbtype, avg=False):
+    return get_filename(data_path, data_name, postfix=dbtype+'_avg', ext='h5') if avg else get_filename(data_path, data_name, postfix=dbtype, ext='h5')
+
+def get_filename(data_path, data_name, postfix=None, ext=None):
+    filename = data_name
+    if postfix:
+        filename = '%s_%s'%(filename, postfix)
+    if ext:
+        filename = '%s.%s'%(filename, ext)
+    return os.path.join(data_path, filename)
 
 def get_filenames(folderlist, filenumlist, prefix):
     filenames = []
