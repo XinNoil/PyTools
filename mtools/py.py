@@ -1,6 +1,7 @@
-import argparse
+import os,sys,argparse
 import numpy as np
 from itertools import compress, chain
+from .io import load_json
 
 # str
 def is_number(s):
@@ -18,6 +19,9 @@ def str2bool(v):
         return False
     else:
         raise argparse.ArgumentTypeError('Unsupported value encountered.')
+
+def join_path(a, *p):
+    return os.path.join(a, *p)
 
 # lists
 def list_find(l):
@@ -55,6 +59,6 @@ def merge_dict(d1, d2):
     d3.update(d2)
     return d3
 
-#tuple
+# tuple
 def tuple_ind(l, ind):
     return (l[i] for i in ind)

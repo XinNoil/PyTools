@@ -1,4 +1,4 @@
-from .base import Base
+from .base import Base, train_model
 from .dnn import dnn, DNN, train_dnn
 from .cnn import CNN, DCNN
 from .resnet import ResNet, DeResNet

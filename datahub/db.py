@@ -204,7 +204,7 @@ class DB(object):
             max_rssis = [max_rssi for max_rssis in max_rssis_list for max_rssi in max_rssis]
             bssids_filterd = list(set(list_mask(bssids, [max_rssi>=-80 for max_rssi in max_rssis])))
             bssids_filterd.sort()
-            save_json(self.bssids_name(), self.bssids_filterd)
+            save_json(self.bssids_name(), bssids_filterd)
         if _bssids:
             self.set_bssids(_bssids)
         else:

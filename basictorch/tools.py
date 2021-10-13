@@ -3,14 +3,38 @@ import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
-from mtools import tojson, save_json, load_json,check_dir, colors_names, str2bool
+from torch import default_generator, randperm
+from torch._utils import _accumulate
+from torch.utils.data import Subset
+from mtools import tojson, save_json, load_json,check_dir, colors_names, join_path, str2bool
 from sklearn.manifold import TSNE
 import matplotlib.animation as animation
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-def get_device(d):
+# args
+def is_args_set(arg_name):
+    if ('-%s'%arg_name in sys.argv) or ('---%s'%arg_name in sys.argv):
+        return True 
+    return False
+
+def set_args_config(parser, path=join_path('configs', 'train_configs')):
+    args = parser.parse_args()
+    if hasattr(args, 'config') and (args.config is not None):
+        for config_name in args.config:
+            config = load_json(join_path(path,'%s.json'%config_name))
+            for _name in config:
+                setattr(args, _name, config[_name])
+    print('>> %s\n' % str(args))
+    return args
+
+def set_device(args):
+    global device
+    if hasattr(args, 'device') and args.device:
+        device = get_device(args.device)
     print('>> device: %s\n' % str(device))
+
+def get_device(d):
     return torch.device("cuda:%d"%d if torch.cuda.is_available() else "cpu")
 
 def tensor(x):
@@ -303,3 +327,27 @@ def merge_losses(losses_list):
             losses[loss] += losses_[loss]
         losses[loss] /= len(losses_list)
     return losses
+
+# dataset
+class MySubset(Subset):
+    @property
+    def tensors(self):
+        return tuple(tensor[self.indices] for tensor in self.dataset.tensors)
+
+def random_split(dataset, lengths, generator=default_generator):
+    r"""
+    Randomly split a dataset into non-overlapping new datasets of given lengths.
+    Optionally fix the generator for reproducible results, e.g.:
+
+    >>> random_split(range(10), [3, 7], generator=torch.Generator().manual_seed(42))
+
+    Arguments:
+        dataset (Dataset): Dataset to be split
+        lengths (sequence): lengths of splits to be produced
+        generator (Generator): Generator used for the random permutation.
+    """
+    if sum(lengths) != len(dataset):
+        raise ValueError("Sum of input lengths does not equal the length of the input dataset!")
+
+    indices = randperm(sum(lengths), generator=generator).tolist()
+    return [MySubset(dataset, indices[offset - length : offset]) for offset, length in zip(_accumulate(lengths), lengths)]

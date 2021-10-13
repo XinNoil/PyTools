@@ -1,11 +1,41 @@
-import torch
+from logging import warning
+import os,torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 import basictorch.tools as t
-from mtools import list_ind, tuple_ind
+from mtools import tuple_ind
 from .losses import loss_funcs, get_loss_func
 from .layers import acts, act_modules, poolings
+
+def train_model(args, Ds, model, model_params={}, train_params={}, func=None, func_params={}, model_name='dnn', xy_ind=[0,1]):
+    for e in range(args.trails):
+        if hasattr(Ds, 'set_train_dataset'):
+            Ds.set_train_dataset()
+        args.exp_no = t.get_exp_no(args, e+1)
+        model = model(model_name, args,
+                dim_x=Ds.train_dataset.tensors[xy_ind[0]].shape[1], 
+                dim_y=Ds.train_dataset.tensors[xy_ind[1]].shape[1],
+                layer_units = args.layer_units,
+                dropouts = args.dropouts,
+                **model_params
+            ).to(t.device)
+        print(model)
+        model.set_datasets(Ds)
+        if hasattr(args, 'load_model'):
+            if args.load_model:
+                model.load_model()
+                if func:
+                    model.train(batch_size=args.batch_size, epochs=0)
+                    model.args.load_model = True
+                    model.apply_func(func, func_params)
+                continue
+        model.train(batch_size=args.batch_size, epochs=args.epochs, **train_params)
+        if func:
+            model.apply_func(func, func_params)
+    dirs = args.output.split('/')
+    os.system('python sort_evaluate.py -path %s -name %s'%('/'.join(dirs[:-1]), dirs[-1]))
+    return model
 
 class Base(nn.Module):
     def __init__(self, name, args, set_params=True, **model_params):
@@ -253,13 +283,6 @@ class Base(nn.Module):
     def apply_func(self, func=None, func_params={}):
         if func:
             func(self, **func_params)
-    
-    # abandoned function, use basictorch.tools.get_model_params instead
-    def get_model_params(self, model_params, _default_model_params):
-        for param in _default_model_params:
-            if param not in model_params:
-                model_params[param] = _default_model_params[param]
-        return model_params
 
 class SemiBase(Base):
     def on_epoch_begin(self, epoch):

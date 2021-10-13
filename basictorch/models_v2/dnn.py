@@ -51,32 +51,3 @@ class DNN(Base):
             self.apply(t.spectral_norm)
         if is_set_optim:
             self.optimizer = optim.Adadelta(self.parameters(), rho=0.95, eps=1e-7)
-
-def train_dnn(args, Ds, dnn=None, model_params={}, train_params={}, func=None, func_params={}, model_name='dnn', xy_ind=[0,1]):
-    if not dnn:
-        dnn = DNN
-    for e in range(args.trails):
-        if hasattr(Ds, 'set_train_dataset'):
-            Ds.set_train_dataset()
-        args.exp_no = t.get_exp_no(args, e+1)
-        model = dnn(model_name, args,
-                dim_x=Ds.train_dataset.tensors[xy_ind[0]].shape[1], 
-                dim_y=Ds.train_dataset.tensors[xy_ind[1]].shape[1],
-                layer_units = args.layer_units,
-                dropouts = args.dropouts,
-                **model_params
-            ).to(t.device)
-        print(model)
-        model.set_datasets(Ds)
-        if hasattr(args, 'load_model'):
-            if args.load_model:
-                model.load_model()
-                if func:
-                    model.train(batch_size=args.batch_size, epochs=0)
-                    model.args.load_model = True
-                    model.apply_func(func, func_params)
-                continue
-        model.train(batch_size=args.batch_size, epochs=args.epochs, **train_params)
-        if func:
-            model.apply_func(func, func_params)
-    return model
