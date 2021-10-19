@@ -32,7 +32,7 @@ class DB(object):
                 self.__dict__ = load_h5(self.save_name())
                 self.set_bssids(bssids)
             else:
-                raise Exception('DB is not existed.')
+                raise Exception('DB is not existed: %s.'%(self.save_name() if filename=='' else filename))
         if is_print:
             self.print()
     
@@ -149,9 +149,9 @@ class DB(object):
             print('len: %d'%len(self))
         print([(k, len(v) if type(v)==list else (v.shape if type(v)==np.ndarray else v)) for k,v in zip(self.__dict__.keys(), self.__dict__.values())])
     
-    def init_db_no(self, i=0):
+    def set_db_no(self, i=0):
         if hasattr(self, 'db'):
-            self.db.init_db_no(i)
+            self.db.set_db_no(i)
         else:
             self.db_no = np.zeros((len(self),1))+i if i else np.zeros((len(self),1))
     
@@ -239,7 +239,7 @@ class DBs(DB):
         else:
             bssids = self.dbs[0].bssids
         for db,i in zip(self.dbs, range(len(self.dbs))):
-            db.init_db_no(i)
+            db.set_db_no(i)
     
     @property
     def rssis(self):

@@ -1,16 +1,19 @@
-import git
 from git import Repo
 from datetime import datetime
 from .io import load_json
 
 def gitcommit(path, msg=None):
-    if msg==None:
-        now = datetime.now()
-        message = now.strftime(" at %m/%d/%y %H:%M:%S")
-    repo = git.Repo.init(path=path)
+    if type(path)==str:
+        repo = Repo(path=path)
+    else:
+        repo = path
     if repo.is_dirty():
+        if msg==None:
+            now = datetime.now()
+            msg = now.strftime(" at %m/%d/%y %H:%M:%S")
         repo.git.add('--all')
         repo.index.commit('autocommit :%s'%msg)
+        print('git auto commit: %s'%msg)
 
 def get_repos(git_config):
     repo_names = [_lib['name'] for _lib in git_config['Dependent libraries']]
@@ -30,3 +33,9 @@ def get_git_info(config_file):
     return get_repos_info(repos)
 
 # print(get_git_info(join_path('configs','git.json')))
+def gitcommit_repos(config_file):
+    git_config = load_json(config_file)
+    repos = get_repos(git_config)
+    # map(gitcommit, repos)
+    for repo in repos:
+        gitcommit(repo)

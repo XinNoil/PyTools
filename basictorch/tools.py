@@ -11,20 +11,38 @@ from sklearn.manifold import TSNE
 import matplotlib.animation as animation
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+gen_path = os.environ['DEEPPRINT_GEN_PATH']
 
 # args
-def is_args_set(arg_name):
-    if ('-%s'%arg_name in sys.argv) or ('---%s'%arg_name in sys.argv):
-        return True 
+def is_args_set(arg_name, option_strings_dict):
+    if '-%s'%arg_name in option_strings_dict:
+        option_strings = option_strings_dict['-%s'%arg_name]
+    elif '--%s'%arg_name in option_strings_dict:
+        option_strings = option_strings_dict['--%s'%arg_name]
+    else:
+        return False
+    for option_string in option_strings:
+        if (option_string in sys.argv) or (option_string in sys.argv):
+            return True 
     return False
+
+def get_option_strings_dict(option_strings_list):
+    option_strings_dict = {}
+    for option_strings in option_strings_list:
+        for option_string in option_strings:
+            option_strings_dict[option_string] = option_strings
+    return option_strings_dict
 
 def set_args_config(parser, path=join_path('configs', 'train_configs')):
     args = parser.parse_args()
+    option_strings_list = [action.option_strings for action in parser._actions]
+    option_strings_dict = get_option_strings_dict(option_strings_list)
     if hasattr(args, 'config') and (args.config is not None):
         for config_name in args.config:
             config = load_json(join_path(path,'%s.json'%config_name))
             for _name in config:
-                setattr(args, _name, config[_name])
+                if not is_args_set(_name, option_strings_dict):
+                    setattr(args, _name, config[_name])
     print('>> %s\n' % str(args))
     return args
 
@@ -42,8 +60,6 @@ def tensor(x):
 
 def stack_mean(x):
     return torch.mean(torch.stack(x), dim=0)
-    
-gen_path = os.environ['DEEPPRINT_GEN_PATH']
 
 def get_filename(args, name, file_extension='csv', file_type='output', by_exp_no=True):
     postfix = '%s_%s' % (name, args.exp_no) if by_exp_no else name

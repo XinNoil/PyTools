@@ -4,16 +4,16 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 import basictorch.tools as t
-from mtools import tuple_ind
+from mtools import tuple_ind,save_json,get_git_info,join_path
 from .losses import loss_funcs, get_loss_func
 from .layers import acts, act_modules, poolings
 
-def train_model(args, Ds, model, model_params={}, train_params={}, func=None, func_params={}, model_name='dnn', xy_ind=[0,1]):
+def train_model(args, Ds, Model, model_params={}, train_params={}, func=None, func_params={}, model_name='dnn', xy_ind=[0,1]):
     for e in range(args.trails):
         if hasattr(Ds, 'set_train_dataset'):
             Ds.set_train_dataset()
         args.exp_no = t.get_exp_no(args, e+1)
-        model = model(model_name, args,
+        model = Model(model_name, args,
                 dim_x=Ds.train_dataset.tensors[xy_ind[0]].shape[1], 
                 dim_y=Ds.train_dataset.tensors[xy_ind[1]].shape[1],
                 layer_units = args.layer_units,
@@ -255,6 +255,7 @@ class Base(nn.Module):
     def save_end(self):
         self.save_model()
         self.save_curve()
+        self.save_git_info()
         self.save_evaluate()
 
     def save_model(self):
@@ -265,6 +266,10 @@ class Base(nn.Module):
     
     def save_curve(self):
         t.curve_plot(self.history, self.args, curve_name='curve_%s' % self.name)
+    
+    def save_git_info(self):
+        if os.path.exists(join_path('configs','git.json')):
+            save_json(get_git_info(join_path('configs','git.json')))
 
     def save_evaluate(self, postfix=''):
         if self.validation:

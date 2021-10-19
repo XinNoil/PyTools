@@ -51,3 +51,9 @@ class DNN(Base):
             self.apply(t.spectral_norm)
         if is_set_optim:
             self.optimizer = optim.Adadelta(self.parameters(), rho=0.95, eps=1e-7)
+    
+    def get_intra_feature(self, x, name):
+        for _name, _module in self.sequential._modules.items():
+            x = _module(x)
+            if _name == name:
+                break
