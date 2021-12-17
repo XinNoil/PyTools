@@ -1,4 +1,4 @@
-import os,copy
+import os,copy,itertools
 import numpy as np
 from datahub.wifi import get_bssids, process_rssis, WiFiData, set_bssids, get_ssids, normalize_rssis, unnormalize_rssis
 from mtools import list_mask,list_con,load_h5,save_h5,load_json,save_json,csvread,np_avg,np_avg_std,np_intersect,np_repeat,np_mean_nonzero
@@ -26,7 +26,7 @@ class DB(object):
     def __init__(self, data_path='', data_name='', dbtype='db', cdns=[], wfiles=[], avg=False, \
                 bssids=[], save_h5_file=False, event=False, is_load_h5=True, is_save_h5=True, \
                 start_time=0, rssis=[], mags=[], RecordsNums=[], filename='', dev=0, is_empty=False, \
-                merge_method='all', is_print=True, rp_no=[]):
+                merge_method='all', is_print=True, rp_no=[], filter_bssids=True, **db_params):
         _print('', is_print)
         if len(rssis) or is_empty:
             self.bssids = bssids
@@ -43,7 +43,8 @@ class DB(object):
             self.data_name = data_name
             self.dbtype = dbtype
             self.start_time = start_time
-            print('data name: %s'%data_name)
+            self.filter_bssids = filter_bssids
+            _print('data name: %s'%data_name, is_print)
             if os.path.exists(filename) and is_load_h5:
                 _print('load h5 file: %s'%filename, is_print)
                 self.__dict__ = load_h5(filename)
@@ -67,6 +68,9 @@ class DB(object):
                 self.wfiles = wfiles
                 self.process_data(bssids, avg, save_h5_file, event, is_save_h5, merge_method)
         self.dev = dev
+        if len(db_params):
+            for param in db_params:
+                self.__dict__[param] = db_params[param]
         self.print(is_print)
 
     def save_h5(self, filename=None, avg=False):
@@ -194,20 +198,21 @@ class DB(object):
         if os.path.exists(self.bssids_name('unfilterd')):
             self.bssids = load_json(self.bssids_name('unfilterd'))
             self.process_rssis_all(avg, bssids_list, save_h5_file, event, merge_method)
-            bssids_filterd = load_json(self.bssids_name())
+            if len(_bssids)==0 and self.filter_bssids:
+                bssids_filterd = load_json(self.bssids_name())
         else:
-            bssids = [bssid for bssids in bssids_list for bssid in bssids]
+            bssids = list(set(itertools.chain(*bssids_list)))
+            save_json(self.bssids_name('unfilterd'), bssids)
             self.bssids = bssids
-            save_json(self.bssids_name('unfilterd'), self.bssids)
             self.process_rssis_all(avg, bssids_list, save_h5_file, event, merge_method)
-
-            max_rssis = [max_rssi for max_rssis in max_rssis_list for max_rssi in max_rssis]
-            bssids_filterd = list(set(list_mask(bssids, [max_rssi>=-80 for max_rssi in max_rssis])))
-            bssids_filterd.sort()
-            save_json(self.bssids_name(), bssids_filterd)
-        if _bssids:
+            if len(_bssids)==0 and self.filter_bssids:
+                max_rssis = [max_rssi for max_rssis in max_rssis_list for max_rssi in max_rssis]
+                bssids_filterd = list(set(list_mask(bssids, [max_rssi>=-80 for max_rssi in max_rssis])))
+                bssids_filterd.sort()
+                save_json(self.bssids_name(), bssids_filterd)
+        if len(_bssids):
             self.set_bssids(_bssids)
-        else:
+        elif self.filter_bssids:
             self.set_bssids(bssids_filterd)
     
     def scan_ssids(self):

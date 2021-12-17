@@ -34,20 +34,29 @@ def save_json(filename, obj, ensure_ascii=True):
         f.write(str_json)
         f.close()
 
-def save_h5(filename, obj):
+def save_h5(filename, obj, utf=False):
     f=h5py.File(filename,'w')
     for v,k in zip(obj.__dict__.values(), obj.__dict__.keys()):
         if hasattr(v,'__len__'):
             if len(v)>0:
                 if (type(v[0])==str):
-                    v = str2np(v)
+                    if not utf:
+                        v = str2np(v)
+                    else:
+                        v = np.array(v, h5py.string_dtype(encoding='utf-8'))
         f[k]=v
     f.close()
 
 def load_h5(filename):
     f = h5py.File(filename,'r')
     __dict__=dict((k,v[()]) for k,v in zip(f.keys(), f.values()))
-    __dict__=dict((k,np2str(v)) if v.dtype.char=='S' else (k,v) for k,v in zip(__dict__.keys(), __dict__.values()))
+    for k,v in zip(__dict__.keys(), __dict__.values()):
+        if type(v) == np.bytes_:
+            __dict__[k] = str(np.char.decode(v))
+        elif type(v) == bytes:
+            __dict__[k] = v.decode()
+        elif type(v)==np.ndarray and v.dtype.char=='S':
+            __dict__[k] = np2str(v)
     return __dict__
 
 def csvread(filename):
@@ -67,6 +76,9 @@ def save_mat(filename, **kwargs):
             kwargs[key] = np.array(kwargs[key])
     scipy.io.savemat(filename, kwargs)
 
+def load_mat(filename):
+    return scipy.io.loadmat(filename)
+
 def get_zip_filenames(zip_src):
     r = zipfile.is_zipfile(zip_src)
     if r:
@@ -75,9 +87,9 @@ def get_zip_filenames(zip_src):
     else:
         return False
 
-def write_file(file_name, str_list):
-    file_=open(file_name, 'w')
-    file_.writelines([s+'\n' for s in str_list])
+def write_file(file_name, str_list, encoding=None):
+    file_=open(file_name, 'w', encoding=encoding)
+    file_.writelines(['%s\n'%s for s in str_list])
     file_.close()
 
 def read_file(file_name):

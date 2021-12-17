@@ -6,7 +6,7 @@ import numpy as np
 from torch import default_generator, randperm
 from torch._utils import _accumulate
 from torch.utils.data import Subset
-from mtools import tojson, save_json, load_json,check_dir, colors_names, join_path, str2bool
+from mtools import tojson, save_json, load_json,check_dir, colors_names, join_path, str2bool, gitcommit_repos
 from sklearn.manifold import TSNE
 import matplotlib.animation as animation
 
@@ -34,6 +34,7 @@ def get_option_strings_dict(option_strings_list):
     return option_strings_dict
 
 def set_args_config(parser, path=join_path('configs', 'train_configs')):
+    # args > json > default
     args = parser.parse_args()
     option_strings_list = [action.option_strings for action in parser._actions]
     option_strings_dict = get_option_strings_dict(option_strings_list)
@@ -43,6 +44,8 @@ def set_args_config(parser, path=join_path('configs', 'train_configs')):
             for _name in config:
                 if not is_args_set(_name, option_strings_dict):
                     setattr(args, _name, config[_name])
+    if hasattr(args, 'git_commit') and args.git_commit:
+        gitcommit_repos(join_path('configs', 'git.json'))
     print('>> %s\n' % str(args))
     return args
 
@@ -69,7 +72,10 @@ def get_filename(args, name, file_extension='csv', file_type='output', by_exp_no
         return os.path.join(get_gen_dir(args), '%s_%s.%s' % (args.data_name, postfix, file_extension))
 
 def get_out_dir(args):
-    out_dir = '%s_%s' % (args.data_name, args.data_ver)
+    if hasattr(args, 'use_data_name_new') and args.use_data_name_new:
+        out_dir = '%s_%s' % (args.data_name_new, args.data_ver)
+    else:
+        out_dir = '%s_%s' % (args.data_name, args.data_ver)
     if hasattr(args, 'feature_mode'):
         out_dir = '%s_%s' % (out_dir, args.feature_mode)
     if hasattr(args, 'sub_output'):
@@ -177,22 +183,17 @@ def print_loss(losses):
     for r in losses:
         print('| %s = %.4f ' % (r, losses[r].item()), end='')
 
-def save_model(model):
+def save_model(model, postfix=''):
     save_json(get_filename(model.args, 'args', 'json'), model.args)
-    torch.save(model.state_dict(), get_filename(model.args, 'model_%s' % model.name, 'pth'))
+    torch.save(model.state_dict(), get_filename(model.args, 'model_%s%s' % (model.name, postfix), 'pth'))
     if hasattr(model, 'model_params'):
         save_json(get_filename(model.args, 'model_%s' % model.name, 'json', by_exp_no=False), model.model_params)
 
-def load_model(model, args=None):
+def load_model(model, args=None, postfix=''):
     if not args:
         args = model.args
-    # if os.path.exists(get_filename(args, 'model_%s' % model.name, 'json', by_exp_no=False)):
-    #     if hasattr(model, 'set_model_params'):
-    #         model.set_model_params(load_json(get_filename(args, 'model_%s' % model.name, 'json', by_exp_no=False)))
-    #     else:
-    #         model.set_model_params(load_json(get_filename(args, 'model_%s' % model.name, 'json', by_exp_no=False)))
     model.to(device)
-    model.load_state_dict(torch.load(get_filename(args, 'model_%s' % model.name, 'pth')))
+    model.load_state_dict(torch.load(get_filename(args, 'model_%s%s' % (model.name, postfix), 'pth')))
 
 def time_format(t):
     m, s = divmod(t, 60)

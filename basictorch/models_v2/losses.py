@@ -129,9 +129,9 @@ loss_funcs={
     'wmse':wmse
 }
 
-def get_loss_func(loss_func, args=None):
+def get_loss_func(loss_func, **params):
     if loss_func =='mdl':
-        return Mean_dis_loss(args.sigma)
+        return Mean_dis_loss(**params)
     else:
         return loss_funcs[loss_func]
 

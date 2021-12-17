@@ -8,10 +8,13 @@ from mtools import tuple_ind,save_json,get_git_info,join_path
 from .losses import loss_funcs, get_loss_func
 from .layers import acts, act_modules, poolings
 
-def train_model(args, Ds, Model, model_params={}, train_params={}, func=None, func_params={}, model_name='dnn', xy_ind=[0,1]):
-    for e in range(args.trails):
-        if hasattr(Ds, 'set_train_dataset'):
-            Ds.set_train_dataset()
+def train_model(args, Ds, Model, model_name='dnn', xy_ind=[0,1], model_params={}, train_params={},\
+        pre_func=None, pre_func_params={}, func=None, func_params={}, sort_evaluate=True):
+    if not hasattr(args, 'start_trail'):
+        args.start_trail = 0
+    for e in range(args.start_trail, args.trails):
+        # if hasattr(Ds, 'set_train_dataset'):
+        #     Ds.set_train_dataset()
         args.exp_no = t.get_exp_no(args, e+1)
         model = Model(model_name, args,
                 dim_x=Ds.train_dataset.tensors[xy_ind[0]].shape[1], 
@@ -22,19 +25,36 @@ def train_model(args, Ds, Model, model_params={}, train_params={}, func=None, fu
             ).to(t.device)
         print(model)
         model.set_datasets(Ds)
-        if hasattr(args, 'load_model'):
-            if args.load_model:
-                model.load_model()
-                if func:
-                    model.train(batch_size=args.batch_size, epochs=0)
-                    model.args.load_model = True
-                    model.apply_func(func, func_params)
-                continue
-        model.train(batch_size=args.batch_size, epochs=args.epochs, **train_params)
+        if pre_func:
+            model.apply_func(pre_func, pre_func_params)
+        if hasattr(args, 'load_model') and args.load_model:
+            model.load_model()
+            model.train(batch_size=args.batch_size, epochs=0)
+        else:
+            model.train(batch_size=args.batch_size, epochs=args.epochs, **train_params)
         if func:
             model.apply_func(func, func_params)
-    dirs = args.output.split('/')
-    os.system('python sort_evaluate.py -path %s -name %s'%('/'.join(dirs[:-1]), dirs[-1]))
+    if sort_evaluate:
+        dirs = args.output.split('/')
+        os.system('python sort_evaluate.py -path %s -name %s'%('/'.join(dirs[:-1]), dirs[-1]))
+    return model
+
+# for e in range(args.trails):
+#     args.exp_no = t.get_exp_no(args, e+1)
+#     get_model(args, Ds, Model, model_params={}, model_name='dnn', xy_ind=[0,1])
+
+def get_model(args, Ds, Model, model_params={}, model_name='dnn', xy_ind=[0,1]):
+    model = Model(model_name, args,
+            dim_x=Ds.train_dataset.tensors[xy_ind[0]].shape[1], 
+            dim_y=Ds.train_dataset.tensors[xy_ind[1]].shape[1],
+            layer_units = args.layer_units,
+            dropouts = args.dropouts,
+            **model_params
+        ).to(t.device)
+    print(model)
+    model.set_datasets(Ds)
+    model.load_model()
+    model.train(batch_size=args.batch_size, epochs=0)
     return model
 
 class Base(nn.Module):
@@ -79,10 +99,18 @@ class Base(nn.Module):
             self.__dict__[param] = t.get_param(self.model_params, param)
         self.build_model()
     
-    def set_loss_funcs(self, loss_func=None):
+    def set_loss_funcs(self, loss_func=None): # set loss_funcs['loss'] with str or function
         if loss_func is not None:
             self.loss_func = loss_func
-        self.loss_funcs['loss'] = get_loss_func(self.loss_func, self.args)
+        self.loss_funcs['loss'] = self.get_loss_func(self.loss_func)
+        if hasattr(self, 'monitor') and self.monitor != 'loss':
+            self.loss_funcs[self.monitor] = get_loss_func(self.monitor)
+    
+    def get_loss_func(self, loss_func):
+        if loss_func == 'mdl':
+            return get_loss_func('mdl', sigma = self.sigma)
+        else:
+            return get_loss_func(loss_func)
     
     def build_model(self):
         self.sequential = nn.Sequential()
@@ -208,7 +236,10 @@ class Base(nn.Module):
 
     def set_datasets(self, datasets):
         self.datasets = datasets
-        self.num_data = len(datasets.train_dataset)
+    
+    @property
+    def num_data(self):
+        return len(self.datasets.train_dataset)
 
     def initialize_model(self):
         t.reset_parameters(self)
@@ -256,7 +287,10 @@ class Base(nn.Module):
         self.save_model()
         self.save_curve()
         self.save_git_info()
-        self.save_evaluate()
+        if hasattr(self, 'save_evaluate_func'):
+            self.save_evaluate_func(self)
+        else:
+            self.save_evaluate()
 
     def save_model(self):
         t.save_model(self)
@@ -269,7 +303,7 @@ class Base(nn.Module):
     
     def save_git_info(self):
         if os.path.exists(join_path('configs','git.json')):
-            save_json(get_git_info(join_path('configs','git.json')))
+            save_json(t.get_filename(self.args, 'gitinfo', 'json'), get_git_info(join_path('configs','git.json')))
 
     def save_evaluate(self, postfix=''):
         if self.validation:
@@ -290,26 +324,40 @@ class Base(nn.Module):
             func(self, **func_params)
 
 class SemiBase(Base):
+    def __init__(self, name, args, set_params=True, **model_params):
+        super().__init__(name, args, set_params, **model_params)
+        self.semi = True
+
     def on_epoch_begin(self, epoch):
         super().on_epoch_begin(epoch)
-        self.unlab_loader = self.datasets.get_unlab_loader(len(self.data_loader))
+        if self.semi:
+            self.unlab_loader = self.datasets.get_unlab_loader(len(self.data_loader))
     
     def train_on_epoch(self):
-        for (b, batch_data_l),(b, batch_data_u) in zip(enumerate(self.data_loader), enumerate(self.unlab_loader)):
-            self.b = b
-            batch_data = batch_data_l+batch_data_u
-            losses = self.train_on_batch(b, batch_data)
-            self.print_batch(b, losses)
+        if self.semi:
+            for (b, batch_data_l),(b, batch_data_u) in zip(enumerate(self.data_loader), enumerate(self.unlab_loader)):
+                self.b = b
+                batch_data = batch_data_l+batch_data_u
+                losses = self.train_on_batch(b, batch_data)
+                self.print_batch(b, losses)
+        else:
+            super().train_on_epoch()
     
     def get_dataset_losses(self, dataset, eval_dataset='train'):
-        batch_data = tuple(dataset.tensors)+tuple(self.datasets.get_unlab_dataset(dataset).tensors)
-        self.eval_dataset = eval_dataset
-        return self.get_batchdata_losses(batch_data)
+        if self.semi:
+            batch_data = tuple(dataset.tensors)+tuple(self.datasets.get_unlab_dataset(dataset).tensors)
+            self.eval_dataset = eval_dataset
+            return self.get_batchdata_losses(batch_data)
+        else:
+            return super().get_dataset_losses(dataset, eval_dataset)
     
     def get_losses(self, batch_data, batch_i = None):
-        inputs, labels, unlabs = self.unpack_batch(batch_data, batch_i, [0,1,2])
-        outputs = self(inputs, unlabs)
-        losses={}
-        for r in self.loss_funcs:
-            losses[r] = self.loss_funcs[r](outputs, labels)
-        return losses
+        if self.semi:
+            inputs, labels, unlabs = self.unpack_batch(batch_data, batch_i, [0,1,2])
+            outputs = self(inputs, unlabs)
+            losses={}
+            for r in self.loss_funcs:
+                losses[r] = self.loss_funcs[r](outputs, labels)
+            return losses
+        else:
+            return super().get_losses(batch_data, batch_i)

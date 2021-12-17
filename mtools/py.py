@@ -23,6 +23,15 @@ def str2bool(v):
 def join_path(a, *p):
     return os.path.join(a, *p)
 
+def fixed_len_str(var, fixed_len=18):
+    string = str(var)
+    if len(string)<fixed_len:
+        return string
+    else:
+        return '%s..'%string[:fixed_len]
+
+fls = fixed_len_str
+
 # lists
 def list_find(l):
     return [i for i, x in enumerate(l) if x]
@@ -52,6 +61,15 @@ def for_print(l):
     for x in l:
         print(x)
 
+def list_not(l):
+    return list(map(lambda x:not x, l))
+
+def list_and(l1,l2):
+    return list(map(lambda x,y: x and y, l1,l2))
+
+def lb2li(l): # bool list to int list
+    return list(map(lambda x:int(x), l))
+
 # dict
 def merge_dict(d1, d2):
     d3 = {}
@@ -61,4 +79,4 @@ def merge_dict(d1, d2):
 
 # tuple
 def tuple_ind(l, ind):
-    return (l[i] for i in ind)
+    return tuple(l[i] for i in ind)

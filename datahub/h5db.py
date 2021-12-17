@@ -73,6 +73,8 @@ class DB(object):
     def get_label(self, label_mode=None):
         if label_mode and hasattr(self, label_mode):
             labels = getattr(self, label_mode)
+            if type(labels) == list:
+                labels = np.array(labels)
             if labels.ndim ==1:
                 labels = np.expand_dims(labels, axis=1)
             return labels
@@ -139,14 +141,15 @@ class DB(object):
         return p
 
     def normalize_rssis(self):
-        self.rssis = normalize_rssis(self.rssis)
+        if np.mean(self.rssis)<0:
+            self.rssis = normalize_rssis(self.rssis)
 
     def unnormalize_rssis(self):
         self.rssis = unnormalize_rssis(self.rssis)
     
     def print(self):
         if hasattr(self, 'rssis'):
-            print('len: %d'%len(self))
+            print('len: %d, min_rssis: %d'%(len(self),np.min(self.rssis)))
         print([(k, len(v) if type(v)==list else (v.shape if type(v)==np.ndarray else v)) for k,v in zip(self.__dict__.keys(), self.__dict__.values())])
     
     def set_db_no(self, i=0):

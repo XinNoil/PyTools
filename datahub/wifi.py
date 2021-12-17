@@ -52,7 +52,6 @@ def update_reader_ssids(reader, bssids, ssids):
                 ssids.append(row[8])
             else:
                 ssids.append('')
-                import pdb; pdb.set_trace()
     return bssids, ssids
 
 def get_ssids(filename, zipfilename=None, bssids=[], ssids=[]):

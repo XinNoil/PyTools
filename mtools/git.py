@@ -22,10 +22,21 @@ def get_repos(git_config):
         repo.name = name
     return repos
 
+def get_repo_status(repo):
+    status = {}
+    changed_files = [item.a_path for item in repo.index.diff(None)]
+    if len(changed_files):
+        status['changed'] = changed_files
+        # for changed_file in changed_files:
+            # status['changed'].append(repo.git.diff(changed_file))
+    if len(repo.untracked_files):
+        status['untracked'] = repo.untracked_files
+    return status
+
 def get_repos_info(repos):
     if type(repos)!=list:
         repos = [repos]
-    return [{'name':repo.name ,'branch':repo.heads[0].name, 'commit':str(repo.heads[0].commit), 'dirty':repo.is_dirty()} for repo in repos]
+    return [{'name':repo.name ,'branch':repo.heads[0].name, 'commit':str(repo.heads[0].commit), 'status':get_repo_status(repo)} for repo in repos]
 
 def get_git_info(config_file):
     git_config = load_json(config_file)
