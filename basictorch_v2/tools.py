@@ -158,8 +158,8 @@ def get_exp_no(data_postfix, e):
 def print_mem(message=''):
     print("{}".format(message, torch.cuda.memory_allocated(0)))
 
-def n2t(num, tensortype=torch.FloatTensor, device=torchDevice()):
-    return tensortype(num).to(device)
+def n2t(num, tensortype=torch.FloatTensor, device=None):
+    return tensortype(num).to(torchDevice() if device is None else device)
 
 def t2n(tensor):
     return tensor.detach().cpu().numpy()
