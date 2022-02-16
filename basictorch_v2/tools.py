@@ -70,15 +70,27 @@ def set_args_config(parser, path=join_path('configs', 'train_configs')):
     return args
 
 torch_device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-def set_device(args):
-    global torch_device
-    if hasattr(args, 'device') and args.device:
-        torch_device = get_device(args.device)
-    print('>> device: %s\n' % str(torch_device))
-    return torch_device
 
-def get_device(d):
-    return torch.device("cuda:%d"%d if torch.cuda.is_available() else "cpu")
+class TorchDevice(str):
+    def __init__(self):
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    
+    @staticmethod
+    def set_device(self, args):
+        if hasattr(args, 'device') and args.device:
+            self.device = torch.device("cuda:%d"%args.device if torch.cuda.is_available() else "cpu")
+            global torch_device
+            torch_device = self.device
+        print('>> device: %s\n' % str(self.device))
+        return self.device
+    
+    def __call__(self):
+        return self.device
+
+torchDevice = TorchDevice()
+
+def set_device(args):
+    return torchDevice.set_device(torchDevice, args)
 
 def get_arg(args, name, arg, required=False):
     if arg is None:
@@ -146,7 +158,7 @@ def get_exp_no(data_postfix, e):
 def print_mem(message=''):
     print("{}".format(message, torch.cuda.memory_allocated(0)))
 
-def n2t(num, tensortype=torch.FloatTensor, device=torch_device):
+def n2t(num, tensortype=torch.FloatTensor, device=torchDevice()):
     return tensortype(num).to(device)
 
 def t2n(tensor):
