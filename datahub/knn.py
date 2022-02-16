@@ -3,37 +3,45 @@ import numpy as np
 from scipy.spatial.distance import cdist
 from sklearn.metrics import mean_absolute_error
 
-def get_k_ind(fp, td, k=3, metric='euclidean', ap_mask=None, is_weighted=False):
-    k = int(min(k, len(fp.rssis)))
-    fp_rssis = np.array(fp.rssis)
-    td_rssis = np.array(td.rssis)
-    if ap_mask is not None:
-        fp_rssis = fp_rssis[:,ap_mask]
-        td_rssis = td_rssis[:,ap_mask]
-    if type(metric) == str:
-        D = cdist(td_rssis, fp_rssis, metric=metric)
-    else:
-        D = metric(td_rssis, fp_rssis)
-    ind = np.argsort(D)
-    return (ind[:, :k],None) if not is_weighted else (ind[:, :k], get_weight(D[:, :k]))
-
 def get_weight(D):
     w = 1/(D+1)
     w = w/np.sum(w, axis=1, keepdims=True)
     return w
 
-def knn(fp, td, k=3, metric='euclidean', ap_mask=None, is_weighted=False):
-    k_ind,w = get_k_ind(fp, td, k=k, metric=metric, ap_mask=ap_mask, is_weighted=is_weighted)
+def get_k_ind(fp, td, k=3, metric='euclidean', ap_mask=None, is_weighted=False, is_return_detail=False):
+    k = int(min(k, len(fp.rssis)))
+    fp_rssis = np.array(fp.rssis)
+    td_rssis = np.array(td.rssis)
+    if ap_mask is not None:
+        _fp_rssis = fp_rssis[:,ap_mask]
+        _td_rssis = td_rssis[:,ap_mask]
+    else:
+        _fp_rssis = fp_rssis
+        _td_rssis = td_rssis
+    if type(metric) == str:
+        D = cdist(_td_rssis, _fp_rssis, metric=metric)
+    else:
+        D = metric(_td_rssis, _fp_rssis)
+    ind = np.argsort(D)
+    return (ind[:, :k], get_weight(D[:, :k]) if is_weighted else None, D[:, :k] if is_return_detail else None)
+
+def knn(fp, td, k=3, metric='euclidean', ap_mask=None, is_weighted=False, is_return_detail=False):
+    (k_ind,w,k_D) = get_k_ind(fp, td, k=k, metric=metric, ap_mask=ap_mask, is_weighted=is_weighted, is_return_detail=is_return_detail)
     k_cdns = np.array(fp.cdns).astype(np.float)[k_ind,:]
     if is_weighted and k>1:
         w = np.expand_dims(w, axis=2)
-        return np.sum(k_cdns*w, axis=1)
+        td_cdns = np.sum(k_cdns*w, axis=1)
     else:
-        return np.mean(k_cdns, axis=1)
+        td_cdns = np.mean(k_cdns, axis=1)
+    if is_return_detail:
+        return (td_cdns, k_ind, k_cdns, k_D)
+    else:
+        return td_cdns
 
-def evaluate_knn(fp, td, k=3, metric='euclidean', ap_mask=None, is_weighted=False):
-    td_cdns = knn(fp, td, k, metric=metric, ap_mask=ap_mask, is_weighted=is_weighted)
-    return np.linalg.norm(td_cdns-np.array(td.cdns).astype(np.float),axis=1)
+def evaluate_knn(fp, td, k=3, metric='euclidean', ap_mask=None, is_weighted=False, is_return_ind=False):
+    (td_cdns, k_ind) = knn(fp, td, k, metric=metric, ap_mask=ap_mask, is_weighted=is_weighted, is_return_ind=True)
+    test_errs = error(td_cdns, td.cdns)
+    return (test_errs, k_ind) if is_return_ind else test_errs
 
 def _knn(fp, rssis, k=3, ap_mask=None):
     fp_rssis = fp.rssis
@@ -85,8 +93,7 @@ def evaluate_cknn(fp, td, k1=10, k2=3, T=15):
     return error(td_cdns, td.cdns), td_cdns, ap_masks
 
 def error(a, b):
-    return np.linalg.norm(a-b, axis=1)
-
+    return np.linalg.norm(a-b, axis=-1)
 
 # backup
 def single_knn_non(fp, rssis, min_rssi, k=3):

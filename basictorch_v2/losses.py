@@ -106,6 +106,9 @@ def imuloss_psi(output, label, alpha=1.0):
     dif = T.abs(output-label)
     return T.mean(dif[:,1]) # dif[:,0] # alpha*
 
+def identity(labels, outputs):
+    return outputs
+
 ee = euclidean_error
 mee = mean_euclidean_error
 mrl = mean_rec_loss
@@ -117,6 +120,7 @@ rmse = root_mean_square_error
 mrmse = mean_root_mean_square_error
 wmse = weighted_mean_squared_error
 loss_funcs={
+    'identity':identity,
     'ee':ee,
     'mee':mee,
     'mrl':mrl,
@@ -132,7 +136,8 @@ loss_funcs={
     'imuloss_l':imuloss_l,
     'imuloss_psi':imuloss_psi,
     'mrkl':mean_rec_kl_loss,
-    'wmse':wmse
+    'wmse':wmse,
+    'crossentropy':T.nn.CrossEntropyLoss()
 }
 
 def get_loss_func(loss_func, **params):

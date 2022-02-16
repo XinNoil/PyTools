@@ -14,39 +14,12 @@ from gpytorch.models import AbstractVariationalGP, GP
 from gpytorch.models.deep_gps import AbstractDeepGPLayer, AbstractDeepGP, DeepLikelihood
 from gpytorch.likelihoods import MultitaskGaussianLikelihood, GaussianLikelihood
 
-acts = {
-    'relu':torch.relu,
-    'tanh':torch.tanh,
-    'sigmoid':torch.sigmoid,
-    'leakyrelu':torch.nn.functional.leaky_relu,
-    'elu':torch.nn.functional.elu,
-    'softmax':torch.softmax,
-}
-
-act_modules = {
-    'relu':nn.ReLU(),
-    'tanh':nn.Tanh(),
-    'sigmoid':nn.Sigmoid(),
-    'leakyrelu':torch.nn.modules.LeakyReLU(),
-    'elu':nn.ELU(),
-    'softmax':torch.nn.Softmax(),
-}
-
-poolings={
-    'max':nn.MaxPool2d(2),
-    'avg':nn.AvgPool2d(2),
-}
-
 def softplus(x):
     """ Positivity constraint """
     softplus = torch.log(1+torch.exp(x))
     # Avoid infinities due to taking the exponent
     softplus = torch.where(softplus==float('inf'), x, softplus)
     return softplus
-
-class E(nn.Module):
-    def forward(self, x):
-        return x
 
 class View(nn.Module):
     def __init__(self, *shape):
@@ -55,6 +28,27 @@ class View(nn.Module):
 
     def forward(self, input):
         return input.view(*self.shape)
+
+class MLinear(nn.Module):
+    def __init__(self, n, in_features: int, out_features: int, bias: bool = True,
+                 device=None, dtype=None):
+        super().__init__()
+        self.linears = nn.ModuleList([Linear(in_features, out_features, bias, device, dtype) for i in range(n)])
+    
+    def forward(self, x):
+        token_axis = len(list(x.shape))-2
+        x = torch.swapaxes(x, 0, token_axis)
+        x = torch.stack([linear(_x) for _x,linear in zip(x, self.linears)], dim=token_axis)
+        return x
+
+class PreNorm(nn.Module):
+    def __init__(self, dim, fn):
+        super().__init__()
+        self.norm = nn.LayerNorm(dim)
+        self.fn = fn
+
+    def forward(self, x, **kwargs):
+        return self.fn(self.norm(x), **kwargs)
 
 class NormalGammaLinear(Linear):
     def __init__(self, in_features, out_features, bias=True):
@@ -204,25 +198,45 @@ class RandomDrop(nn.Module):
         self.random_p = random_p
 
     def forward(self, x):
-        return random_drop(x, torch.rand(x.shape[0], 1, device=x.device)*self.p if self.random_p else self.p)
+        if self.training:
+            return random_drop(x, torch.rand(x.shape[0], 1, device=x.device)*self.p if self.random_p else self.p)
+        else:
+            return x
 
-import numpy as np
-from basictorch.tools import n2t
+acts = {
+    'relu':torch.relu,
+    'tanh':torch.tanh,
+    'sigmoid':torch.sigmoid,
+    'leakyrelu':torch.nn.functional.leaky_relu,
+    'elu':torch.nn.functional.elu,
+    'gelu':torch.nn.functional.gelu,
+    'softmax':torch.softmax,
+}
 
-def get_mask_w_index(n, p):
-    mask = np.zeros((n,))
-    mask[p] = 1
-    return n2t(mask, tensortype=torch.BoolTensor)
+act_modules = {
+    'relu':nn.ReLU(),
+    'tanh':nn.Tanh(),
+    'sigmoid':nn.Sigmoid(),
+    'leakyrelu':torch.nn.modules.LeakyReLU(),
+    'elu':nn.ELU(),
+    'gelu':nn.GELU(),
+    'softmax':torch.nn.Softmax(-1),
+}
 
-def get_third_masks(n, q):
-    p = np.random.permutation(n)
-    third = int(n/3)
-    if q == 1:
-        m1 = get_mask_w_index(n, p[:third])
-        m2 = get_mask_w_index(n, p[third:third*2])
-        m3 = get_mask_w_index(n, p[third*2:])
-    elif q == 2:
-        m1 = get_mask_w_index(n, p[:third*2])
-        m2 = get_mask_w_index(n, p[third:])
-        m3 = get_mask_w_index(n, np.hstack((p[:third], p[2*third:])))
-    return (m1,m2,m3)
+poolings={
+    'max':nn.MaxPool2d,
+    'avg':nn.AvgPool2d,
+    None:nn.Identity
+}
+
+drops={
+    'dropout':nn.Dropout,
+    'featuredrop':RandomDrop,
+    None:nn.Identity
+}
+
+norm_layers = {
+    None: nn.Identity,
+    'layernorm':nn.LayerNorm,
+    'batchnorm':nn.BatchNorm2d,
+}

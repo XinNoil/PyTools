@@ -183,17 +183,21 @@ def print_loss(losses):
     for r in losses:
         print('| %s = %.4f ' % (r, losses[r].item()), end='')
 
-def save_model(model, postfix=''):
+def save_model(model, args=None, postfix=''):
+    if not args:
+        args = model.args
     save_json(get_filename(model.args, 'args', 'json'), model.args)
     torch.save(model.state_dict(), get_filename(model.args, 'model_%s%s' % (model.name, postfix), 'pth'))
     if hasattr(model, 'model_params'):
         save_json(get_filename(model.args, 'model_%s' % model.name, 'json', by_exp_no=False), model.model_params)
 
-def load_model(model, args=None, postfix=''):
-    if not args:
-        args = model.args
+def load_model(model, args=None, postfix='', filename=None):
+    if filename is None:
+        if not args:
+            args = model.args
+        filename = get_filename(args, 'model_%s%s' % (model.name, postfix), 'pth')
     model.to(device)
-    model.load_state_dict(torch.load(get_filename(args, 'model_%s%s' % (model.name, postfix), 'pth')))
+    model.load_state_dict(torch.load(filename))
 
 def time_format(t):
     m, s = divmod(t, 60)

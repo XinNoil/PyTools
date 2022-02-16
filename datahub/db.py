@@ -75,6 +75,7 @@ class DB(object):
 
     def save_h5(self, filename=None, avg=False):
         if filename is None:
+            # not recommended
             save_h5(self.save_name(avg), self)
             print('save to %s' % self.save_name(avg))
         else:
@@ -131,6 +132,7 @@ class DB(object):
         else:
             self.rssis = np_avg(self.rssis, self.RecordsNums)
             self.cdns  = np_avg(self.cdns, self.RecordsNums)
+            self.RecordsNums = np.ones(len(self))
     
     def repeat_avg(self):
         if not hasattr(self, 'rssis_avg'):
@@ -257,9 +259,13 @@ class DB(object):
             else:
                 self.rssis.append(rssis)
                 self.RecordsNums.append(len(rssis))
-        self.rssis = np.vstack(self.rssis)
+        try:
+            self.rssis = np.vstack(self.rssis)
+        except:
+            import pdb;pdb.set_trace()
+            
         if avg:
-            self.RecordsNums = np.ones(len(self))
+            self.RecordsNums = np.ones(len(self), dtype=np.int)
         else:
             self.RecordsNums = np.array(self.RecordsNums)
     
@@ -307,9 +313,7 @@ class DB(object):
             return normalize_rssis(self.rssis_avg) if np.max(self.rssis_avg)<0 else self.rssis_avg
 
     def get_label(self, label_mode=None):
-        if label_mode and hasattr(self, label_mode):
-            return self.__dict__[label_mode]
-        else:
+        if (label_mode is None) or (label_mode == 'cdns'):
             return self.cdns
     
     def get_dev(self, dev_dict, embedding=False):
@@ -339,11 +343,14 @@ class DB(object):
     def unnormalize_rssis(self):
         self.rssis = unnormalize_rssis(self.rssis)
     
+    def getattr(self, attr):
+        return self.__dict__[attr]
+    
     def print(self, is_print=True):
         if is_print:
             if hasattr(self, 'rssis'):
                 print('len: %d'%len(self))
-            print([(k, len(v) if type(v)==list else (v.shape if type(v)==np.ndarray else v)) for k,v in zip(self.__dict__.keys(), self.__dict__.values())])
+            print([(k, len(v) if type(v)==list else (v.shape if hasattr(v ,'shape') else v)) for k,v in zip(self.__dict__.keys(), self.__dict__.values())])
             print('')
 
 class SubDB(object):
@@ -408,6 +415,9 @@ class SubDB(object):
             return np.repeat(one_hot, len(self), axis=0)
         else:
             return np.zeros(len(self), dtype=np.int)+dev_dict[self.db.dev]
+    
+    def getattr(self, attr):
+        return self.db.getattr(attr)[self.mask]
 
 class DBs(object):
     def __init__(self, dbs, set_bssids=False, bssids=None):
@@ -420,7 +430,7 @@ class DBs(object):
             for db in self.dbs:
                  db.set_bssids(self.bssids)
         else:
-            bssids = self.dbs[0].bssids
+            self.bssids = self.dbs[0].bssids
     
     @property
     def rssis(self):
@@ -464,6 +474,9 @@ class DBs(object):
     
     def new(self):
         return DB(cdns=self.cdns, rssis=self.rssis, bssids=self.bssids, RecordsNums=self.RecordsNums, rp_no=self.rp_no)
+    
+    def getattr(self, attr):
+        return np.vstack(tuple([db.getattr(attr) for db in self.dbs]))
 
 # class avgDB(object):
 #     def __init__(self, dbs):

@@ -33,8 +33,11 @@ def fixed_len_str(var, fixed_len=18):
 fls = fixed_len_str
 
 # lists
-def list_find(l):
-    return [i for i, x in enumerate(l) if x]
+def list_find(l, a=None):
+    if a is None:
+        return [i for i, x in enumerate(l) if x]
+    else:
+        return [i for i, x in enumerate(l) if x==a]
 
 def list_mask(l, m):
     return list(compress(l, m))
@@ -50,6 +53,9 @@ def list_avg(l):
 
 def list_remove(l, v):
     return list(filter(lambda a: a != v, l))
+
+def unique(l):
+    return list(set(l))
 
 def intersection(a, b):
     c = list(set(a).intersection(b))
@@ -80,3 +86,8 @@ def merge_dict(d1, d2):
 # tuple
 def tuple_ind(l, ind):
     return tuple(l[i] for i in ind)
+
+def not_none(a, b):
+    return b if (a is None) else a
+
+get_Non = not_none

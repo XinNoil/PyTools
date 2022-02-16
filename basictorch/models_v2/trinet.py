@@ -1,28 +1,45 @@
 from .base import *
 
 class TriModel(Base):
+    def set_args_params(self):
+        self._set_args_params(['check_stable','threshold_tri','threshold_self','alpha_tri','stable_K'])
+        super().set_args_params()
+    
     def set_params(self, model_params):
         self.add_default_params({
-            "loss_func":'mee',
-            "check_stable":False, 
-            "threshold_tri":1.0,
-            "threshold_self":1.0,
-            "alpha_tri":1.0,
-            "stable_K":9,
-            "init_share":True,
-            "aug_intensity":0.5,
-            "aug_epochs":-1,
+            'loss_func':'mee',
+            'check_stable':False, 
+            'threshold_tri':1.0,
+            'threshold_self':1.0,
+            'alpha_tri':1.0,
+            'stable_K':9,
+            'init_share':True,
+            'aug_num':1,
+            'aug_nograd':True,
+            'augrd':False,
+            'auge':1,
+            'auges':0,
+            'aug_intensity':0.5,
         })
-        self.add_args_params(['check_stable','threshold_tri','threshold_self','alpha_tri','stable_K'])
+        self.add_args_params([
+            'reg_num',
+            'model_type',
+            # mdrop params
+            'drop_consistency',
+            'random_drop_p', # drop probability
+            'random_p',
+            'alpha_r', # weight of consistency loss
+            # loccon params
+            'identical_consistency', 
+            # tri-net params
+            'share_layer_units','reg_layer_units','dim_x_share','pseudo_label','share_dropouts','reg_dropouts','aug_model','aug_num','aug_nograd','aug_randn','aug_epoch','aug_epochs','aug_intensity',
+        ])
         super().set_params(model_params)
 
     def build_model(self, share_model, sub_models, aug_model=None):
         self.share_model = share_model
         self.sub_models  = sub_models
         self.aug_model   = aug_model
-        self.loss_funcs['loss'] = loss_funcs[self.loss_func]
-        params_list = t.get_model_parameters([self.regressor.share_model, self.regressor.sub_models])
-        self.optimizer = optim.Adadelta(params_list, rho=0.95, eps=1e-7)
     
     def initialize_model(self):
         if self.init_share:
@@ -37,17 +54,36 @@ class TriModel(Base):
         else:
             z = self.share_model(x)
             return t.stack_mean([sub_model(z) for sub_model in self.sub_models])
-
-    def get_losses(self, batch_data, loss_func='mee'):
-        inputs, labels = batch_data
-        if self.training & (self.aug_model!=None):
-            with torch.no_grad():
-                tri_inputs = [self.aug_model.decode_y(labels, random_z=True, intensity=self.aug_intensity) for i in range(2)]
-                tri_inputs.insert(self.b%3, inputs)
+    
+    def get_tri_inputs(self, inputs, labels):
+        if (self.epoch>self.aug_epochs) & (self.epoch % self.aug_epoch==0):
+            if self.aug_num == 1:
+                if self.aug_randn:
+                    tri_inputs = [inputs]*2
+                    tri_inputs.insert(self.b%3, inputs+self.aug_intensity*torch.randn_like(inputs))
+                else:
+                    tri_inputs = [inputs]*2
+                    x_p = self.generator.decode_y(labels, intensity=self.aug_intensity)
+                    tri_inputs.insert(self.b%3, x_p.detach() if self.aug_nograd else x_p)
+            elif self.aug_num == 2:
+                if self.aug_randn:
+                    tri_inputs = [inputs+self.aug_intensity*torch.randn_like(inputs) for i in range(2)]
+                    tri_inputs.insert(self.b%3, inputs)
+                else:
+                    tri_inputs = [self.generator.decode_y(labels, intensity=self.aug_intensity) for i in range(2)]
+                    if self.aug_nograd:
+                        tri_inputs = [inputs.detach() for inputs in tri_inputs]
+                    tri_inputs.insert(self.b%3, inputs)
         else:
             tri_inputs = [inputs]*3
+
+    def get_losses(self, batch_data, loss_func=None):
+        if loss_func is None:
+            loss_func = self.loss_funcs['loss']
+        inputs, labels = batch_data
+        tri_inputs = self.get_tri_inputs(inputs, labels)
         tri_outputs = self(tri_inputs, tri=True)
-        return {'loss':t.stack_mean([loss_funcs[loss_func](labels, outputs) for outputs in tri_outputs])}
+        return {'loss':t.stack_mean([loss_func(labels, outputs) for outputs in tri_outputs])}
 
     def pseudo_labeling(self, x_u, batch_avg=False):
         self.train_mode(False)
