@@ -39,7 +39,7 @@ def knn(fp, td, k=3, metric='euclidean', ap_mask=None, is_weighted=False, is_ret
         return td_cdns
 
 def evaluate_knn(fp, td, k=3, metric='euclidean', ap_mask=None, is_weighted=False, is_return_ind=False):
-    (td_cdns, k_ind) = knn(fp, td, k, metric=metric, ap_mask=ap_mask, is_weighted=is_weighted, is_return_ind=True)
+    (td_cdns, k_ind, k_cdns, k_D) = knn(fp, td, k, metric=metric, ap_mask=ap_mask, is_weighted=is_weighted, is_return_detail=True)
     test_errs = error(td_cdns, td.cdns)
     return (test_errs, k_ind) if is_return_ind else test_errs
 
