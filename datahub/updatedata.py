@@ -18,7 +18,7 @@ def get_months_dates(data_path):
 def gpath(data_path, date):
     return os.path.join(data_path, date[:4])
 
-data_path = os.environ['LONG_UPDATE']
+data_path = os.environ['LONG_UPDATE'] if 'LONG_UPDATE' in os.environ else None
 data_path_h5 = os.path.join(os.environ['DEEPPRINT_DATA_PATH'], 'h5')
 
 months, dates = get_months_dates(data_path)

@@ -11,7 +11,7 @@ from sklearn.manifold import TSNE
 import matplotlib.animation as animation
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-gen_path = os.environ['DEEPPRINT_GEN_PATH']
+gen_path = os.environ['DEEPPRINT_GEN_PATH'] if 'DEEPPRINT_GEN_PATH' in os.environ else None
 
 # args
 def is_args_set(arg_name, option_strings_dict):

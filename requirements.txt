@@ -1,0 +1,6 @@
+matplotlib
+numpy
+scikit_learn
+GitPython
+einops
+gpytorch == 1.6.0
