@@ -2,7 +2,7 @@ import os, sys, time, torch, math, copy, inspect, random
 import numpy as np
 from torch import default_generator, randperm
 from torch._utils import _accumulate
-from torch.utils.data import Subset
+from torch.utils.data import Subset,TensorDataset
 from sklearn.manifold import TSNE
 import matplotlib as mpl
 mpl.use('Agg')
@@ -77,8 +77,9 @@ class TorchDevice(str):
     
     @staticmethod
     def set_device(self, args):
-        if hasattr(args, 'device') and args.device:
-            self.device = torch.device("cuda:%d"%args.device if torch.cuda.is_available() else "cpu")
+        if (hasattr(args, 'device') and args.device) or (type(args) == str):
+            device = args.device if hasattr(args, 'device') else args
+            self.device = torch.device("cuda:%d"%device if torch.cuda.is_available() else "cpu")
             global torch_device
             torch_device = self.device
         print('>> device: %s\n' % str(self.device))
@@ -119,9 +120,17 @@ class OutputManger(object):
         self.seed = get_arg(args, 'seed', seed)
 
         if e is None:
-            self.exp_no = args.exp_no
-            if self.seed:
-                seed_everything(0)
+            if hasattr(args, 'exp_no'):
+                if type(args.exp_no) == str:
+                    self.exp_no = args.exp_no
+                    if self.seed:
+                        seed_everything(0)
+            elif hasattr(args, 'e'):
+                self.set_exp_no(args.e, seed)
+            else:
+                self.exp_no = ''
+                if self.seed:
+                    seed_everything(0)
         else:
             self.set_exp_no(e, seed)
         
@@ -158,8 +167,8 @@ def get_exp_no(data_postfix, e):
 def print_mem(message=''):
     print("{}".format(message, torch.cuda.memory_allocated(0)))
 
-def n2t(num, tensortype=torch.FloatTensor, device=None):
-    return tensortype(num).to(torchDevice() if device is None else device)
+def n2t(num, tensortype=torch.FloatTensor, device=None, **kwargs):
+    return tensortype(num, **kwargs).to(torchDevice() if device is None else device)
 
 def t2n(tensor):
     return tensor.detach().cpu().numpy()
@@ -202,6 +211,14 @@ def random_split(dataset, lengths, generator=default_generator):
 
     indices = randperm(sum(lengths), generator=generator).tolist()
     return [MySubset(dataset, indices[offset - length : offset]) for offset, length in zip(_accumulate(lengths), lengths)]
+
+def get_tensor_dataset(db, feature_mode, label_mode=None, extra_attr_list=[], extra_attr_tensortypes=[], feature_tensortype=torch.FloatTensor, label_tensortype=torch.FloatTensor):
+    tensors = [n2t(db.get_feature(feature_mode), tensortype=feature_tensortype)]
+    if label_mode:
+        tensors.append(n2t(db.get_label(label_mode), tensortype=label_tensortype))
+    for attr,tensortype in zip(extra_attr_list, extra_attr_tensortypes):        
+        tensors.append(n2t(db.getattr(attr), tensortype=tensortype))
+    return TensorDataset(*tensors)
 
 # module tools
 
@@ -384,7 +401,7 @@ def save_t_SNE(filename, Xs, labels, n_components=2, fontsize=15, color='base', 
     plt.figure()
     for i,xs_embedded in zip(range(len(Xs)), Xs_embedded):
         # plt.plot(xs_embedded[:,0], xs_embedded[:,1], colors[i], label=labels[i])
-        plt.scatter(xs_embedded[:,0], xs_embedded[:,1], c=colors[i], marker='.', label=labels[i], s=markersize)
+        plt.scatter(xs_embedded[:,0], xs_embedded[:,1], c=colors[i%len(colors)], marker='.', label=labels[i], s=markersize)
     plt.tick_params(labelsize=fontsize)
     plt.tight_layout()
     plt.xlabel('z1',get_font(fontsize))

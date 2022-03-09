@@ -7,7 +7,10 @@ from .np import str2np, np2str
 def tojson(o, ensure_ascii=True):
     return json.dumps(o, default=lambda obj: obj.__dict__, sort_keys=True,ensure_ascii=ensure_ascii)
 
-def check_dir(path):
+def check_dir(path, is_file=False):
+    if is_file:
+        sub_paths = path.split(os.path.sep)
+        path = os.path.sep.join(sub_paths[:-1])
     if not os.path.exists(path):
         os.makedirs(path)
     return path

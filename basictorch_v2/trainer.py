@@ -192,10 +192,11 @@ class Trainer(Base):
         else:
             self.save_evaluate()
 
-    def save_model(self):
-        write_file(self.outM.get_filename('model_arch_%s'%self.model.name, 'txt', by_exp_no=False), str(self.model).split('\n'))
-        write_file(self.outM.get_filename('model_class_%s'%self.model.name, 'txt', by_exp_no=False), str(inspect.getsource(type(self.model))).split('\n'))
-        t.save_model(self.model, self.outM)
+    def save_model(self, model=None, outM=None, postfix='', filename=None, model_name=None):
+        model = not_none(model, self.model)
+        write_file(self.outM.get_filename('model_arch_%s%s'%(model.name, postfix), 'txt', by_exp_no=False), str(model).split('\n'))
+        write_file(self.outM.get_filename('model_class_%s%s'%(model.name, postfix), 'txt', by_exp_no=False), str(inspect.getsource(type(model))).split('\n'))
+        t.save_model(model, not_none(outM, self.outM), postfix=postfix, filename=filename, model_name=model_name)
     
     def load_model(self, model=None, outM=None, postfix='', filename=None, model_name=None):
         t.load_model(not_none(model, self.model), not_none(outM, self.outM), postfix=postfix, filename=filename, model_name=model_name)

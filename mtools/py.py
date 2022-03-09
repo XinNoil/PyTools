@@ -90,4 +90,12 @@ def tuple_ind(l, ind):
 def not_none(a, b):
     return b if (a is None) else a
 
+# class
+class Struct:
+    def __init__(self, **entries):
+        self.__dict__.update(entries)
+    
+    def __str__(self) -> str:
+        return str(self.__dict__)
+
 get_Non = not_none
