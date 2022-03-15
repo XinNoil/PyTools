@@ -28,7 +28,7 @@ class Trainer(Base):
     #     super().__init__(name, args, outM=outM, model=model, default_args={**{}, **default_args}, args_names=list(set(args_names+[])), **kwargs)
 
     def __init__(self, name, args, outM=None, model=None, default_args={}, args_names=[], **kwargs):
-        self.outM = OutputManger(args, get_sub_dict(kwargs, ['output', 'model_name', 'data_name', 'data_ver', 'data_postfix', 'feature_mode', 'e'])) if outM is None else outM
+        self.outM = OutputManger(args, **get_sub_dict(kwargs, ['output', 'model_name', 'data_name', 'data_ver', 'data_postfix', 'feature_mode', 'e'])) if outM is None else outM
         self.model = model
         default_args = {**{'loss_func':loss_funcs['mee']}, **default_args}
         args_names = list(set(args_names + []))
