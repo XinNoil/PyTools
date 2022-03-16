@@ -324,11 +324,13 @@ def get_sub_batch_data(batch_data, max_sub_size):
     for b in range(int(np.ceil(sub_num))):
         yield tuple(data[b*sub_size:(b+1)*sub_size] for sub_size,data in zip(sub_sizes,batch_data))
 
-def get_predictions(model, test_tensor, max_sub_size=200):
+def get_predictions(model, test_tensors, extra_inputs=[], max_sub_size=200):
+    if type(test_tensors) not in [list, tuple]:
+        test_tensors = [test_tensors]
     with torch.no_grad():
         predictions = []
-        for i in np.arange(0, test_tensor.shape[0], max_sub_size):
-            predictions.append(model(test_tensor[i:i+max_sub_size]))
+        for i in np.arange(0, test_tensors[0].shape[0], max_sub_size):
+            predictions.append(model(*[test_tensor[i:i+max_sub_size] for test_tensor in test_tensors], *extra_inputs))
         return torch.vstack(predictions)
 
 def save_args(outM, args):
