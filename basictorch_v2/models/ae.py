@@ -8,4 +8,8 @@ class AE(nn.Module):
         self.decoder = decoder
 
     def forward(self, x, *args, **kwargs):
-        return self.decoder(self.encoder(x, *args, **kwargs), *args, **kwargs)
+        if 'return_z' in kwargs:
+            z = self.encoder(x, *args, **kwargs)
+            return self.decoder(z, *args, **kwargs), z
+        else:
+            return self.decoder(self.encoder(x, *args, **kwargs), *args, **kwargs)

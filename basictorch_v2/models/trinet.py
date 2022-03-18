@@ -16,10 +16,14 @@ class TriModel(nn.Module):
         self.alpha_tri = alpha_tri
         self.stable_K = stable_K
 
-    def forward(self, x, tri=False):
+    def forward(self, x, tri=False, **kwargs):
         if tri:
-            z_list = [self.share_model(x_) for x_ in x]
-            return [sub_model(z) for z,sub_model in zip(z_list, self.sub_models)]
+            if type(x) == list:
+                z_list = [self.share_model(x_) for x_ in x]
+                return [sub_model(z) for z,sub_model in zip(z_list, self.sub_models)]
+            else:
+                z = self.share_model(x)
+                return [sub_model(z) for sub_model in self.sub_models]
         else:
             z = self.share_model(x)
             return stack_mean([sub_model(z) for sub_model in self.sub_models])
