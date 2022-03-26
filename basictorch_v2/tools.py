@@ -257,6 +257,7 @@ def save_model(model, outM=None, postfix='', filename=None, model_name=None):
 def load_model(model, outM=None, postfix='', filename=None, model_name=None):
     if filename is None:
         filename = outM.get_filename('model_%s%s' % (model.name, postfix), 'pth', model_name=model_name)
+    print('load from:', filename)
     model.load_state_dict(torch.load(filename))
 
 # trainer tools
@@ -286,11 +287,11 @@ def print_epoch(e, epochs, losses, epoch_time):
 
 def print_loss(losses):
     for r in losses:
-        print('| %s = %.4f ' % (r, losses[r].item()), end='')
+        print('| %s = %.4f ' % (r, losses[r]), end='')
 
 def detach_losses(losses):
     for loss in losses:
-        losses[loss] = losses[loss].detach()
+        losses[loss] = losses[loss].detach().item()
     return losses
 
 def merge_losses(losses_list):

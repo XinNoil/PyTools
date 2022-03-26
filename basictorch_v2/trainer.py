@@ -34,7 +34,7 @@ class Trainer(Base):
         args_names = list(set(args_names + []))
         super().__init__(name, args, default_args=default_args, args_names=args_names, **kwargs)
 
-    def fit(self, model, optimizer, datasets, batch_size, epochs, validation=True, monitor='loss', test_monitor='loss', test_reporters=[], initialize=True, batch_i=[0,1], batch_size_eval=128, **kwargs):
+    def fit(self, model, optimizer, datasets, batch_size, epochs, validation=True, monitor='loss', monitor_type='min', test_monitor='loss', test_reporters=[], initialize=True, batch_i=[0,1], batch_size_eval=128, use_checkpoint=True, **kwargs):
         self.model = model
         self.optimizer = optimizer
         self.datasets = datasets
@@ -42,22 +42,27 @@ class Trainer(Base):
         self.epochs = epochs
         self.validation = validation
         self.monitor = monitor
+        self.monitor_type = monitor_type
         self.test_monitor = test_monitor
         self.test_reporters = test_reporters
         self.initialize = initialize
         self.batch_i = batch_i
         self.batch_size_eval = batch_size_eval
+        self.use_checkpoint = use_checkpoint
         t.set_params(self, kwargs)
         if self.epochs>0:
-            self.on_train_begin()
-            for e in range(self.epochs):
-                self.on_epoch_begin(e)
-                self.train_on_epoch()
-                self.on_epoch_end()
-            self.on_train_end()
+            self.epoch_loop()
         else:
             self.val_epoch = 0
             self.fit_time = 0
+    
+    def epoch_loop(self):
+        self.on_train_begin()
+        for e in range(self.epochs):
+            self.on_epoch_begin(e)
+            self.train_on_epoch()
+            self.on_epoch_end()
+        self.on_train_end()
     
     def on_train_begin(self):
         print(self.name)
@@ -72,38 +77,46 @@ class Trainer(Base):
         self.check_validation()
         t.print_epoch(self.epoch, self.epochs, self.losses, 0)
 
-    def on_epoch_begin(self, epoch):
+    def on_epoch_begin(self, epoch, data_loader=None):
         self.model.train(True)
         self.epoch_start_time = time.process_time()
         self.epoch = epoch
-        self.data_loader = self.datasets.get_data_loader('train')
+        self.data_loader = not_none(data_loader, self.datasets.get_data_loader('train'))
     
-    def train_on_epoch(self):
+    def train_on_epoch(self, data_loader=None, optimizer=None):
         sum_losses = {}
-        for b, batch_data in enumerate(self.data_loader):
+        data_loader = not_none(data_loader, self.data_loader)
+        for b, batch_data in enumerate(data_loader):
             self.b = b            
-            losses = t.detach_losses(self.train_on_batch(b, batch_data))
+            losses = t.detach_losses(self.train_on_batch(b, batch_data, optimizer))
             self.print_batch(b, losses)
             sum_losses = t.add_losses(sum_losses, losses)
-        self.losses = t.div_losses(sum_losses, len(self.data_loader))
+        self.losses = t.div_losses(sum_losses, len(data_loader))
     
-    def train_on_batch(self, b, batch_data):
-        self.optimizer.zero_grad()
+    def train_on_batch(self, b, batch_data, optimizer=None):
+        optimizer = not_none(optimizer, self.optimizer)
+        optimizer.zero_grad()
         losses = self.get_losses(batch_data)
         losses['loss'].backward()
-        self.optimizer.step()
+        optimizer.step()
         return losses
 
-    def on_epoch_end(self):
+    def on_epoch_end(self, data_loader=None, scheduler=None):
         epoch_time = time.process_time() - self.epoch_start_time
-        self.losses = self.evaluate(self.losses)
+        self.losses = self.evaluate(self.losses, data_loader=data_loader)
         self.check_validation()
         self.add_losses_to_history()
+        if scheduler is None:
+            if hasattr(self, 'scheduler'):
+                scheduler = self.scheduler
+        if scheduler is not None:
+            scheduler.step(self.losses['loss'])
         t.print_epoch(self.epoch, self.epochs, self.losses, epoch_time)
     
     def on_train_end(self):
         self.fit_time = time.process_time() - self.train_fit_time
-        self.model.load_state_dict(torch.load(self.weights_file))
+        if self.use_checkpoint:
+            self.model.load_state_dict(torch.load(self.weights_file))
         self.save_end()
         print('\n\n--- FINISH TRAINING ---\n\n')
     
@@ -129,7 +142,7 @@ class Trainer(Base):
     def get_dataset_losses(self, data_loader):
         losses = {}
         for b,batch_data in enumerate(data_loader):
-            _losses = self.get_losses(batch_data)
+            _losses = t.detach_losses(self.get_losses(batch_data))
             losses = t.add_losses(losses, _losses)
         last_batch_num = np.max([b.shape[0] for b in batch_data])
         if b>0:
@@ -145,12 +158,14 @@ class Trainer(Base):
     def set_datasets(self, datasets):
         self.datasets = datasets
 
-    def evaluate(self, losses=None, batch_size=None):
+    def evaluate(self, losses=None, batch_size=None, data_loader=None):
         batch_size = batch_size if batch_size else self.batch_size_eval
         with torch.no_grad():
             self.model.train(False)
             if (losses is None) or (not self.validation):
-                losses = self.get_dataset_losses(self.datasets.get_data_loader('train', batch_size=batch_size))
+                if data_loader is None:
+                    data_loader = self.datasets.get_data_loader('train', batch_size=batch_size)
+                losses = self.get_dataset_losses(data_loader)
             if hasattr(self.datasets, 'test_dataset'):
                 test_losses = self.get_dataset_losses(self.datasets.get_data_loader('test', batch_size=batch_size))                
                 losses['test_'+self.test_monitor] = test_losses[self.test_monitor]
@@ -164,22 +179,27 @@ class Trainer(Base):
 
     def check_validation(self):
         monitor = 'val_'+self.monitor if self.validation else self.monitor
-        if (self.epoch  == -1) or ((self.losses[monitor] < self.monitor_loss) and not torch.isnan(self.losses[monitor])):
-            self.save_checkpoint()
+        if np.isnan(self.losses[monitor]):
+            return
+        if self.use_checkpoint:
+            if (self.epoch  == -1) or (self.losses[monitor] < self.monitor_loss and self.monitor_type=='min') or (self.losses[monitor] > self.monitor_loss and self.monitor_type=='max'):
+                self.save_checkpoint(monitor)
+        else:
+            self.save_checkpoint(monitor)
         
-    def save_checkpoint(self):
-        monitor = 'val_'+self.monitor if self.validation else self.monitor
+    def save_checkpoint(self, monitor):
         self.monitor_loss = self.losses[monitor]
         self.monitor_losses = self.losses
         self.val_epoch = self.epoch
-        torch.save(self.model.state_dict(), self.weights_file)
+        if self.use_checkpoint:
+            torch.save(self.model.state_dict(), self.weights_file)
 
     def add_losses_to_history(self):
         for r in list(self.losses.keys()):
             if r in self.history:
-                self.history[r].append(self.losses[r].item())
+                self.history[r].append(self.losses[r])
             else:
-                self.history[r] = [self.losses[r].item()]
+                self.history[r] = [self.losses[r]]
 
     def save_end(self):
         self.save_model()
@@ -206,7 +226,7 @@ class Trainer(Base):
             if self.validation:
                 head = 'data_ver,data_name,exp_no,epochs,batch_size,%s,%s,fit_time,val_epoch\n' % (self.monitor, 'test_%s'%self.test_monitor)
                 varList = [self.outM.data_ver, self.outM.data_name, self.outM.exp_no, self.epochs, self.batch_size,\
-                    self.monitor_losses[self.monitor].item(), self.monitor_losses['test_%s'%self.test_monitor].item() if 'test_%s'%self.test_monitor in self.monitor_losses else 'None', self.fit_time, self.val_epoch]
+                    self.monitor_losses[self.monitor], self.monitor_losses['test_%s'%self.test_monitor] if 'test_%s'%self.test_monitor in self.monitor_losses else 'None', self.fit_time, self.val_epoch]
             else:
                 head = 'data_ver,data_name,exp_no,epochs,batch_size,loss,fit_time\n'
                 varList = [self.outM.data_ver, self.outM.data_name, self.outM.exp_no, self.epochs, self.batch_size, self.history['loss'][-1], self.fit_time]

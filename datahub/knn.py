@@ -25,7 +25,7 @@ def get_k_ind(fp, td, k=3, metric='euclidean', ap_mask=None, is_weighted=False, 
     ind = np.argsort(D)
     return (ind[:, :k], get_weight(D[:, :k]) if is_weighted else None, D[:, :k] if is_return_detail else None)
 
-def knn(fp, td, k=3, metric='euclidean', ap_mask=None, is_weighted=False, is_return_detail=False):
+def knn(fp, td, k=5, metric='euclidean', ap_mask=None, is_weighted=False, is_return_detail=False):
     (k_ind,w,k_D) = get_k_ind(fp, td, k=k, metric=metric, ap_mask=ap_mask, is_weighted=is_weighted, is_return_detail=is_return_detail)
     k_cdns = np.array(fp.cdns).astype(np.float)[k_ind,:]
     if is_weighted and k>1:

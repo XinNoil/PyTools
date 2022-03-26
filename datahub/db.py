@@ -387,7 +387,10 @@ class SubDB(object):
         self.db.set_bssids(bssids)
     
     def new(self):
-        return DB(cdns=self.cdns, rssis=self.rssis, bssids=self.bssids, RecordsNums=self.RecordsNums, rp_no=self.rp_no)
+        if len(self.mask) == len(self.db):
+            return DB(cdns=self.cdns, rssis=self.rssis, bssids=self.bssids, RecordsNums=self.RecordsNums, rp_no=self.rp_no)
+        else:
+            return DB(cdns=self.cdns, rssis=self.rssis, bssids=self.bssids, rp_no=self.rp_no)
     
     def shuffle(self):
         p = self.db.shuffle()
@@ -417,7 +420,11 @@ class SubDB(object):
             return np.zeros(len(self), dtype=np.int)+dev_dict[self.db.dev]
     
     def getattr(self, attr):
-        return self.db.getattr(attr)[self.mask]
+        value = getattr(self, attr, None)
+        if value is not None:
+            return value
+        else:
+            return self.db.getattr(attr)[self.mask]
 
 class DBs(object):
     def __init__(self, dbs, set_bssids=False, bssids=None):
@@ -476,7 +483,11 @@ class DBs(object):
         return DB(cdns=self.cdns, rssis=self.rssis, bssids=self.bssids, RecordsNums=self.RecordsNums, rp_no=self.rp_no)
     
     def getattr(self, attr):
-        return np.vstack(tuple([db.getattr(attr) for db in self.dbs]))
+        value = getattr(self, attr, None)
+        if value is not None:
+            return value
+        else:
+            return np.vstack(tuple([db.getattr(attr) for db in self.dbs]))
 
 # class avgDB(object):
 #     def __init__(self, dbs):
@@ -588,3 +599,13 @@ def aug_db(db, aug_num, is_new=False):
 def set_ind(db):
     db.end_ind = np.cumsum(db.RecordsNums)
     db.start_ind = db.end_ind - db.RecordsNums
+
+def split_db(db, split, is_new=False):
+    val_num = int(len(db)*split)
+    p = np.random.permutation(len(db))
+    db1 = SubDB(db, p[val_num:])
+    db2 = SubDB(db, p[:val_num])
+    if is_new:
+        db1 = db1.new()
+        db2 = db2.new()
+    return db1, db2
