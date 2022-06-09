@@ -34,7 +34,7 @@ class Trainer(Base):
         args_names = list(set(args_names + []))
         super().__init__(name, args, default_args=default_args, args_names=args_names, **kwargs)
 
-    def fit(self, model, optimizer, datasets, batch_size, epochs, validation=True, monitor='loss', monitor_type='min', test_monitor='loss', test_reporters=[], initialize=True, batch_i=[0,1], batch_size_eval=128, use_checkpoint=True, **kwargs):
+    def fit(self, model, optimizer, datasets, batch_size, epochs, validation=True, monitor='loss', monitor_type='min', test_monitor='loss', test_reporters=[], initialize=True, batch_i=[0,1], batch_size_eval=128, is_use_checkpoint=True, is_save_end=True, **kwargs):
         self.model = model
         self.optimizer = optimizer
         self.datasets = datasets
@@ -48,7 +48,8 @@ class Trainer(Base):
         self.initialize = initialize
         self.batch_i = batch_i
         self.batch_size_eval = batch_size_eval
-        self.use_checkpoint = use_checkpoint
+        self.is_use_checkpoint = is_use_checkpoint
+        self.is_save_end = is_save_end
         t.set_params(self, kwargs)
         if self.epochs>0:
             self.epoch_loop()
@@ -115,15 +116,15 @@ class Trainer(Base):
     
     def on_train_end(self):
         self.fit_time = time.process_time() - self.train_fit_time
-        if self.use_checkpoint:
+        if self.is_use_checkpoint:
             self.model.load_state_dict(torch.load(self.weights_file))
-        self.save_end()
+        if self.is_save_end:
+            self.save_end()
         print('\n\n--- FINISH TRAINING ---\n\n')
     
-    def initialize_model(self):
+    def initialize_model(self, model=None):
         if self.initialize:
-            t.reset_parameters(self.model)
-            t.initialize_model(self.model)
+            t.initialize_model(not_none(model, self.model))
     
     def print_batch(self, b, losses):
         if hasattr(self.args, 'print_batch') and not self.args.print_batch:
@@ -181,7 +182,7 @@ class Trainer(Base):
         monitor = 'val_'+self.monitor if self.validation else self.monitor
         if np.isnan(self.losses[monitor]):
             return
-        if self.use_checkpoint:
+        if self.is_use_checkpoint:
             if (self.epoch  == -1) or (self.losses[monitor] < self.monitor_loss and self.monitor_type=='min') or (self.losses[monitor] > self.monitor_loss and self.monitor_type=='max'):
                 self.save_checkpoint(monitor)
         else:
@@ -191,7 +192,7 @@ class Trainer(Base):
         self.monitor_loss = self.losses[monitor]
         self.monitor_losses = self.losses
         self.val_epoch = self.epoch
-        if self.use_checkpoint:
+        if self.is_use_checkpoint:
             torch.save(self.model.state_dict(), self.weights_file)
 
     def add_losses_to_history(self):

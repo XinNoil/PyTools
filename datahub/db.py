@@ -201,21 +201,28 @@ class DB(object):
             self.bssids = load_json(self.bssids_name('unfilterd'))
             self.process_rssis_all(avg, bssids_list, save_h5_file, event, merge_method)
             if len(_bssids)==0 and self.filter_bssids:
-                bssids_filterd = load_json(self.bssids_name())
+                if os.path.exists(self.bssids_name()):
+                    bssids_filterd = load_json(self.bssids_name())
+                else:
+                    bssids_filterd = self._filter_bssids(max_rssis_list, self.bssids)
         else:
             bssids = list(set(itertools.chain(*bssids_list)))
             save_json(self.bssids_name('unfilterd'), bssids)
             self.bssids = bssids
             self.process_rssis_all(avg, bssids_list, save_h5_file, event, merge_method)
             if len(_bssids)==0 and self.filter_bssids:
-                max_rssis = [max_rssi for max_rssis in max_rssis_list for max_rssi in max_rssis]
-                bssids_filterd = list(set(list_mask(bssids, [max_rssi>=-80 for max_rssi in max_rssis])))
-                bssids_filterd.sort()
-                save_json(self.bssids_name(), bssids_filterd)
+                bssids_filterd = self._filter_bssids(max_rssis_list, self.bssids)
         if len(_bssids):
             self.set_bssids(_bssids)
         elif self.filter_bssids:
             self.set_bssids(bssids_filterd)
+    
+    def _filter_bssids(self, max_rssis_list, bssids):
+        max_rssis = [max_rssi for max_rssis in max_rssis_list for max_rssi in max_rssis]
+        bssids_filterd = list(set(list_mask(bssids, [max_rssi>=-80 for max_rssi in max_rssis])))
+        bssids_filterd.sort()
+        save_json(self.bssids_name(), bssids_filterd)
+        return bssids_filterd
     
     def scan_ssids(self):
         ssids_results = [get_ssids(filename, self.zip_name(), [], []) for filename in self.wfiles]

@@ -31,8 +31,10 @@ def get_DB(data_ver, date, dbtypes, is_print=False, device_i=1):
     else:
         raise Exception('Unexpected data_ver')
 
-def get_h5_DB(dataname, dbtype, is_print=False):
-    db = DB(data_path_h5, dataname, dbtype, is_print=is_print)
+def get_h5_DB(dataname, dbtype, is_print=False, path=None):
+    if path is None:
+        path = data_path_h5
+    db = DB(path, dataname, dbtype, is_print=is_print)
     db.normalize_rssis()
     return db
 

@@ -24,8 +24,7 @@ class CNN(nn.Module):
         super().__init__()
         self.name  = name
         self.dropout_i = drops[drop_type](dropouts[0]) if dropouts[0]>0 else nn.Identity()
-        self.reshape = nn.Linear(dim_x, cons[0]*dim*dim) if dim_x else nn.Identity()
-
+        self.reshape = nn.Sequential(nn.Linear(dim_x, cons[0]*dim*dim), act_modules[activations]) if dim_x else nn.Identity()
         self.view = View(-1, cons[0], dim, dim)
         self.blocks = nn.Sequential()
         for i, con_in, con_out in zip(range(len(cons)-1), cons[:-1], cons[1:]):

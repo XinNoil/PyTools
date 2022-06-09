@@ -53,17 +53,20 @@ def get_option_strings_dict(option_strings_list):
             option_strings_dict[option_string] = option_strings
     return option_strings_dict
 
-def set_args_config(parser, path=join_path('configs', 'train_configs')):
-    # args > json > default
-    args = parser.parse_args()
-    option_strings_list = [action.option_strings for action in parser._actions]
-    option_strings_dict = get_option_strings_dict(option_strings_list)
-    if hasattr(args, 'config') and (args.config is not None):
+def _set_args_config(args, parser, path=join_path('configs', 'train_configs')):
+    if hasattr(args, 'config') and (args.config is not None) and len(args.config):
+        option_strings_list = [action.option_strings for action in parser._actions]
+        option_strings_dict = get_option_strings_dict(option_strings_list)
         for config_name in args.config:
             config = load_json(join_path(path,'%s.json'%config_name))
             for _name in config:
                 if not is_args_set(_name, option_strings_dict):
                     setattr(args, _name, config[_name])
+
+def set_args_config(parser, path=join_path('configs', 'train_configs')):
+    # args > json > default
+    args = parser.parse_args()
+    _set_args_config(args, parser, path)
     if hasattr(args, 'git_commit') and args.git_commit:
         gitcommit_repos(join_path('configs', 'git.json'))
     print('>> %s\n' % str(args))
@@ -243,6 +246,8 @@ def initialize_model(model):
     for m in model.modules():
         if issubclass(type(m), torch.nn.Linear):
             torch.nn.init.uniform_(m.weight, -0.05, 0.05)
+        elif hasattr(m, 'reset_parameters'):
+            m.reset_parameters()
 
 def reset_parameters(model):
     for m in model.modules():
