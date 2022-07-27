@@ -12,7 +12,10 @@ def check_dir(path, is_file=False):
         sub_paths = path.split(os.path.sep)
         path = os.path.sep.join(sub_paths[:-1])
     if not os.path.exists(path):
-        os.makedirs(path)
+        try:
+            os.makedirs(path)
+        except:
+            print('mkdir fail: %s'%path)
     return path
 
 def file_dir(file):
