@@ -74,6 +74,10 @@ class GRL(Function):
     output = grl(ouput)
     output.backward()
     '''
+    def __init__(self, alpha = 1, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.alpha = alpha
+
     @property
     def alpha(self):
         return GRL._alpha
@@ -116,9 +120,9 @@ acts = {
     'relu':torch.relu,
     'tanh':torch.tanh,
     'sigmoid':torch.sigmoid,
-    'leakyrelu':torch.nn.functional.leaky_relu,
-    'elu':torch.nn.functional.elu,
-    'gelu':torch.nn.functional.gelu,
+    'leakyrelu':nn.functional.leaky_relu,
+    'elu':nn.functional.elu,
+    'gelu':nn.functional.gelu,
     'softmax':torch.softmax,
 }
 
@@ -126,10 +130,20 @@ act_modules = {
     'relu':nn.ReLU(),
     'tanh':nn.Tanh(),
     'sigmoid':nn.Sigmoid(),
-    'leakyrelu':torch.nn.modules.LeakyReLU(),
+    'leakyrelu':nn.modules.LeakyReLU(),
     'elu':nn.ELU(),
     'gelu':nn.GELU(),
-    'softmax':torch.nn.Softmax(-1),
+    'softmax':nn.Softmax(-1),
+}
+
+acts = {
+    'relu':nn.ReLU,
+    'tanh':nn.Tanh,
+    'sigmoid':nn.Sigmoid,
+    'leakyrelu':nn.modules.LeakyReLU,
+    'elu':nn.ELU,
+    'gelu':nn.GELU,
+    'softmax':nn.Softmax,
 }
 
 poolings={
@@ -149,3 +163,10 @@ norm_layers = {
     'layernorm':nn.LayerNorm,
     'batchnorm':nn.BatchNorm2d,
 }
+
+Conv = {1:nn.Conv1d, 2:nn.Conv2d}
+DeConv = {1:nn.ConvTranspose1d, 2:nn.ConvTranspose2d}
+Maxpool = {1:nn.MaxPool1d, 2:nn.MaxPool2d}
+UpSample = {1:nn.Upsample, 2:nn.Upsample}
+BatchNorm = {1:nn.BatchNorm1d, 2:nn.BatchNorm2d}
+AdaptiveAvgPool = {1:nn.AdaptiveAvgPool1d, 2:nn.AdaptiveAvgPool2d}

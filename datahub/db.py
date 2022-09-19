@@ -353,6 +353,10 @@ class DB(object):
     def getattr(self, attr):
         return self.__dict__[attr]
     
+    def set_ind(self):
+        self.end_ind = np.cumsum(self.RecordsNums)
+        self.start_ind = self.end_ind - self.RecordsNums
+    
     def print(self, is_print=True):
         if is_print:
             if hasattr(self, 'rssis'):

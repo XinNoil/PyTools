@@ -34,7 +34,7 @@ class Trainer(Base):
         args_names = list(set(args_names + []))
         super().__init__(name, args, default_args=default_args, args_names=args_names, **kwargs)
 
-    def fit(self, model, optimizer, datasets, batch_size, epochs, validation=True, monitor='loss', monitor_type='min', test_monitor='loss', test_reporters=[], initialize=True, batch_i=[0,1], batch_size_eval=128, is_use_checkpoint=True, is_save_end=True, **kwargs):
+    def fit(self, model, optimizer, datasets, batch_size, epochs, validation=True, monitor='loss', monitor_type='min', test_monitor='loss', test_reporters=[], initialize=True, batch_i=[0,1], batch_size_eval=128, is_use_checkpoint=True, is_save_end=True, postfix='', **kwargs):
         self.model = model
         self.optimizer = optimizer
         self.datasets = datasets
@@ -50,6 +50,7 @@ class Trainer(Base):
         self.batch_size_eval = batch_size_eval
         self.is_use_checkpoint = is_use_checkpoint
         self.is_save_end = is_save_end
+        self.postfix = postfix
         t.set_params(self, kwargs)
         if self.epochs>0:
             self.epoch_loop()
@@ -145,7 +146,7 @@ class Trainer(Base):
         for b,batch_data in enumerate(data_loader):
             _losses = t.detach_losses(self.get_losses(batch_data))
             losses = t.add_losses(losses, _losses)
-        last_batch_num = np.max([b.shape[0] for b in batch_data])
+        last_batch_num = np.max([b.shape[0] for b in batch_data]) if hasattr(batch_data[0], 'shape') else self.batch_size_eval
         if b>0:
             p = 1.0-(last_batch_num/self.batch_size_eval)
             for loss in _losses:
@@ -203,7 +204,7 @@ class Trainer(Base):
                 self.history[r] = [self.losses[r]]
 
     def save_end(self):
-        self.save_model()
+        self.save_model(postfix=self.postfix)
         t.save_args(self.outM, self.args)
         t.curve_plot(self.outM, 'curve_%s' % self.name, self.history)
         if os.path.exists(join_path('configs','git.json')):

@@ -8,7 +8,8 @@ import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 # import matplotlib.animation as animation
-from mtools import tojson, save_json, load_json,check_dir, colors_names, join_path, gitcommit_repos, tuple_ind, list_con
+from mtools import tojson, save_json, load_json,check_dir, colors_names, join_path, gitcommit_repos, tuple_ind
+from .dataset import MDataLoader
 
 class Base(object):
     def __init__(self, name, args, default_args={}, args_names=[], **kwargs):
@@ -239,6 +240,13 @@ def get_layers(input_dim, layer_units, Layer = torch.nn.Linear, **kwargs):
 def spectral_norm(m):
     if isinstance(m, (torch.nn.Conv2d, torch.nn.ConvTranspose2d, torch.nn.Linear)):
         return torch.nn.utils.spectral_norm(m)
+    elif isinstance(m, torch.nn.LSTM):
+        name_pre = 'weight'
+        for i in range(m.num_layers):
+            name = name_pre+'_hh_l'+str(i)
+            torch.nn.utils.spectral_norm(m, name)
+            name = name_pre+'_ih_l'+str(i)
+            torch.nn.utils.spectral_norm(m, name)
     else:
         return m
 
@@ -265,6 +273,19 @@ def load_model(model, outM=None, postfix='', filename=None, model_name=None):
     print('load from:', filename)
     model.load_state_dict(torch.load(filename))
 
+def freeze_model(model):
+    for p in model.parameters():
+        p.requires_grad = False
+
+def unfreeze_model(model):
+    for p in model.parameters():
+        p.requires_grad = True
+
+def unfreeze_optimizer(optimizer):
+    for param_group in optimizer.param_groups:
+        for param in param_group['params']:
+            param.requires_grad = True
+            
 # trainer tools
 def merge_params(params, _params):
     return {**_params, **params}
@@ -417,15 +438,4 @@ def save_t_SNE(filename, Xs, labels, n_components=2, fontsize=15, color='base', 
     if legend:
         plt.legend(loc="upper right",prop=get_font(fontsize))
     plt.savefig(filename)
-
-class MDataLoader(object):
-    def __init__(self, *dataLoaders):
-        self.dataLoaders = dataLoaders
-    
-    def __len__(self):
-        return min([len(d) for d in self.dataLoaders])
-        
-    def __iter__(self):
-      for batch in zip(*self.dataLoaders):
-          yield list_con(batch)
     
