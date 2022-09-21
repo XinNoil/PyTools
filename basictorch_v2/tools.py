@@ -239,7 +239,7 @@ def get_layers(input_dim, layer_units, Layer = torch.nn.Linear, **kwargs):
 
 def spectral_norm(m):
     if isinstance(m, (torch.nn.Conv2d, torch.nn.ConvTranspose2d, torch.nn.Linear)):
-        return torch.nn.utils.spectral_norm(m)
+        torch.nn.utils.spectral_norm(m)
     elif isinstance(m, torch.nn.LSTM):
         name_pre = 'weight'
         for i in range(m.num_layers):
@@ -247,8 +247,6 @@ def spectral_norm(m):
             torch.nn.utils.spectral_norm(m, name)
             name = name_pre+'_ih_l'+str(i)
             torch.nn.utils.spectral_norm(m, name)
-    else:
-        return m
 
 def initialize_model(model):
     for m in model.modules():
@@ -271,7 +269,7 @@ def load_model(model, outM=None, postfix='', filename=None, model_name=None):
     if filename is None:
         filename = outM.get_filename('model_%s%s' % (model.name, postfix), 'pth', model_name=model_name)
     print('load from:', filename)
-    model.load_state_dict(torch.load(filename))
+    model.load_state_dict(torch.load(filename), strict=False)
 
 def freeze_model(model):
     for p in model.parameters():

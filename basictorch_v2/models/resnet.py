@@ -399,14 +399,14 @@ class DeResNet(nn.Module):
             stride = 1
         layers = []
         
-        outplanes = planes*(self.expansion**2) if pyramid else planes*self.expansion
+        outplanes = (planes*(self.expansion**2) if pyramid else planes*self.expansion) if blocks>1 else _outplanes
         if stride != 1 or self.inplanes != outplanes:
             downsample = nn.Sequential(
                 conv1x(self.inplanes, outplanes, stride, conv=Conv[conv_dim]),
                 norm_layer(outplanes),
             )
         layers.append(block(self.inplanes, planes*4, conv_dim, stride, downsample, self.groups,
-                            self.base_width, previous_dilation, norm_layer, act, self.expansion, True, pyramid=pyramid))
+                            self.base_width, previous_dilation, norm_layer, act, self.expansion, True, pyramid=pyramid, outplanes=outplanes))
         
         downsample = None
         for _ in range(1, blocks):
