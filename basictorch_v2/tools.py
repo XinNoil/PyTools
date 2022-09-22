@@ -192,6 +192,12 @@ def seed_everything(seed):
     torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.deterministic = True
 
+def data_to_device(batch_data):
+    if isinstance(batch_data, torch.Tensor):
+        return batch_data.to(torchDevice())
+    else:
+        return tuple(data_to_device(item) for item in batch_data)
+
 # dataset tools
 class MySubset(Subset):
     @property
