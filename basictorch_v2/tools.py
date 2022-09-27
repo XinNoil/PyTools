@@ -364,8 +364,8 @@ def get_predictions(model, test_tensors, extra_inputs=[], max_sub_size=200):
             predictions.append(model(*[test_tensor[i:i+max_sub_size] for test_tensor in test_tensors], *extra_inputs))
         return torch.vstack(predictions)
 
-def save_args(outM, args):
-    save_json(outM.get_filename('args', 'json'), args)
+def save_args(outM, args, postfix=''):
+    save_json(outM.get_filename('args%s'%postfix, 'json'), args)
 
 def get_font(fontsize=15):
     return {'weight' : 'normal', 'size': fontsize}

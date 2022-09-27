@@ -207,8 +207,8 @@ class Trainer(Base):
 
     def save_end(self):
         self.save_model(postfix=self.postfix)
-        t.save_args(self.outM, self.args)
-        t.curve_plot(self.outM, 'curve_%s' % self.name, self.history)
+        t.save_args(self.outM, self.args, postfix=self.postfix)
+        t.curve_plot(self.outM, 'curve_%s%s' % (self.name, self.postfix), self.history)
         if os.path.exists(join_path('configs','git.json')):
             save_json(self.outM.get_filename('gitinfo', 'json'), get_git_info(join_path('configs','git.json')))
         if hasattr(self, 'save_evaluate_func'):
