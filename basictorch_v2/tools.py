@@ -258,6 +258,8 @@ def initialize_model(model):
     for m in model.modules():
         if issubclass(type(m), torch.nn.Linear):
             torch.nn.init.uniform_(m.weight, -0.05, 0.05)
+        elif issubclass(type(m), (torch.nn.Conv1d, torch.nn.Conv2d)):
+            torch.nn.init.xavier_uniform_(m.weight)
         elif hasattr(m, 'reset_parameters'):
             m.reset_parameters()
 
@@ -289,7 +291,15 @@ def unfreeze_optimizer(optimizer):
     for param_group in optimizer.param_groups:
         for param in param_group['params']:
             param.requires_grad = True
-            
+
+def open_track_running_stats(m):
+    if hasattr(m, 'track_running_stats'):
+        m.track_running_stats = True
+
+def close_track_running_stats(m):
+    if hasattr(m, 'track_running_stats'):
+        m.track_running_stats = False
+
 # trainer tools
 def merge_params(params, _params):
     return {**_params, **params}
