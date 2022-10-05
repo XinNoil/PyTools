@@ -292,13 +292,13 @@ def unfreeze_optimizer(optimizer):
         for param in param_group['params']:
             param.requires_grad = True
 
-def open_track_running_stats(m):
-    if hasattr(m, 'track_running_stats'):
-        m.track_running_stats = True
+def train_bn(m):
+    if m.__class__.__name__.find('BatchNorm') != -1:
+        m.train(True)
 
-def close_track_running_stats(m):
-    if hasattr(m, 'track_running_stats'):
-        m.track_running_stats = False
+def fix_bn(m):
+    if m.__class__.__name__.find('BatchNorm') != -1:
+        m.train(False)
 
 # trainer tools
 def merge_params(params, _params):
