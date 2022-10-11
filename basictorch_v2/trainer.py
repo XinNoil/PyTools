@@ -216,12 +216,17 @@ class Trainer(Base):
 
     def save_model(self, model=None, outM=None, postfix='', filename=None, model_name=None):
         model = not_none(model, self.model)
-        write_file(self.outM.get_filename('model_arch_%s%s'%(model.name, postfix), 'txt', by_exp_no=False), str(model).split('\n'))
-        write_file(self.outM.get_filename('model_class_%s%s'%(model.name, postfix), 'txt', by_exp_no=False), str(inspect.getsource(type(model))).split('\n'))
+        write_file(self.outM.get_filename('model_arch_%s'%(model.name), 'txt', by_exp_no=False), str(model).split('\n'))
+        write_file(self.outM.get_filename('model_class_%s'%(model.name), 'txt', by_exp_no=False), str(inspect.getsource(type(model))).split('\n'))
         t.save_model(model, not_none(outM, self.outM), postfix=postfix, filename=filename, model_name=model_name)
     
     def load_model(self, model=None, outM=None, postfix='', filename=None, model_name=None):
         t.load_model(not_none(model, self.model), not_none(outM, self.outM), postfix=postfix, filename=filename, model_name=model_name)
+    
+    def exist_model(self, model=None, outM=None, postfix='', filename=None, model_name=None):
+        model = not_none(model, self.model)
+        outM = not_none(outM, self.outM)
+        return os.path.exists(outM.get_filename('model_%s%s' % (model.name, postfix), 'pth', model_name=model_name) if filename is None else filename)
 
     def save_evaluate(self, postfix='', head=None, varList=None):
         if head is None:
