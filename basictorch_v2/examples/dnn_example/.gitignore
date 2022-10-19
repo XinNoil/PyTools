@@ -1,0 +1,11 @@
+# file
+*.pyc
+*.pth
+*.log
+test.py
+# folder
+tmp
+__pycache__
+output
+.vscode
+.ipynb_checkpoints
