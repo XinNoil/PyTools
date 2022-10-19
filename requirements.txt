@@ -1,6 +1,6 @@
 matplotlib
-numpy
-scikit_learn
+numpy>=1.21.6
+scikit_learn>=1.0.2
 GitPython
 einops
 gpytorch == 1.6.0
