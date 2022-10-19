@@ -2,6 +2,7 @@ import os,sys,argparse
 import numpy as np
 from itertools import compress, chain
 from .io import load_json
+from collections import ChainMap
 
 # str
 def is_number(s):
@@ -82,6 +83,9 @@ def merge_dict(d1, d2):
     d3.update(d1)
     d3.update(d2)
     return d3
+
+def dict_con(a):
+    return dict(ChainMap(*a))
 
 # tuple
 def tuple_ind(l, ind):

@@ -65,8 +65,8 @@ def load_h5(filename):
             __dict__[k] = np2str(v)
     return __dict__
 
-def csvread(filename):
-    return np.loadtxt(filename,delimiter=',')
+def csvread(filename,delimiter=','):
+    return np.loadtxt(filename,delimiter=delimiter)
 
 def csvwrite(filename, data, delimiter=',', fmt='%.4f'):
     np.savetxt(filename ,data, delimiter=delimiter, fmt=fmt)
