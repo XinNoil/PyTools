@@ -2,7 +2,7 @@ import os, sys, torch, time, inspect
 import torch.optim as optim
 import basictorch_v2.tools as t
 from .losses import loss_funcs
-from .tools import Base, OutputManger
+from .tools import Base, OutputManger, data_to_device
 from mtools import join_path, save_json, get_git_info, write_file, not_none, np
 
 def get_optim(parameters, type, **kwargs):
@@ -134,6 +134,7 @@ class Trainer(Base):
             t.print_batch(self.epoch, self.epochs, b, self.batch_size, len(self.datasets.train_dataset), losses)
 
     def get_losses(self, batch_data, *args, **kwargs):
+        batch_data = data_to_device(batch_data)
         inputs, labels = t.unpack_batch(batch_data, self.batch_i)
         outputs = self.model(inputs, *args, **kwargs)
         return self._get_losses(labels, outputs)

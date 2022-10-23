@@ -42,7 +42,11 @@ def save_json(filename, obj, ensure_ascii=True):
 
 def save_h5(filename, obj, utf=False):
     f=h5py.File(filename,'w')
-    for v,k in zip(obj.__dict__.values(), obj.__dict__.keys()):
+    if hasattr(obj, '__dict__'):
+        __dict__ = obj.__dict__
+    else:
+        __dict__ = obj
+    for v,k in zip(__dict__.values(), __dict__.keys()):
         if hasattr(v,'__len__'):
             if len(v)>0:
                 if (type(v[0])==str):
