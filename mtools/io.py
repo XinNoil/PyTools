@@ -12,7 +12,10 @@ def check_dir(path, is_file=False):
         sub_paths = path.split(os.path.sep)
         path = os.path.sep.join(sub_paths[:-1])
     if not os.path.exists(path):
-        os.makedirs(path)
+        try:
+            os.makedirs(path)
+        except:
+            print('mkdir fail: %s'%path)
     return path
 
 def file_dir(file):
@@ -39,7 +42,11 @@ def save_json(filename, obj, ensure_ascii=True, encoding=None):
 
 def save_h5(filename, obj, utf=False):
     f=h5py.File(filename,'w')
-    for v,k in zip(obj.__dict__.values(), obj.__dict__.keys()):
+    if hasattr(obj, '__dict__'):
+        __dict__ = obj.__dict__
+    else:
+        __dict__ = obj
+    for v,k in zip(__dict__.values(), __dict__.keys()):
         if hasattr(v,'__len__'):
             if len(v)>0:
                 if (type(v[0])==str):
@@ -62,8 +69,8 @@ def load_h5(filename):
             __dict__[k] = np2str(v)
     return __dict__
 
-def csvread(filename):
-    return np.loadtxt(filename,delimiter=',')
+def csvread(filename,delimiter=','):
+    return np.loadtxt(filename,delimiter=delimiter)
 
 def csvwrite(filename, data, delimiter=',', fmt='%.4f'):
     np.savetxt(filename ,data, delimiter=delimiter, fmt=fmt)

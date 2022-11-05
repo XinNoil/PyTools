@@ -258,8 +258,6 @@ def initialize_model(model):
     for m in model.modules():
         if issubclass(type(m), torch.nn.Linear):
             torch.nn.init.uniform_(m.weight, -0.05, 0.05)
-        elif issubclass(type(m), (torch.nn.Conv1d, torch.nn.Conv2d)):
-            torch.nn.init.xavier_uniform_(m.weight)
         elif hasattr(m, 'reset_parameters'):
             m.reset_parameters()
 
@@ -291,15 +289,7 @@ def unfreeze_optimizer(optimizer):
     for param_group in optimizer.param_groups:
         for param in param_group['params']:
             param.requires_grad = True
-
-def train_bn(m):
-    if m.__class__.__name__.find('BatchNorm') != -1:
-        m.train(True)
-
-def fix_bn(m):
-    if m.__class__.__name__.find('BatchNorm') != -1:
-        m.train(False)
-
+            
 # trainer tools
 def merge_params(params, _params):
     return {**_params, **params}
@@ -374,8 +364,8 @@ def get_predictions(model, test_tensors, extra_inputs=[], max_sub_size=200):
             predictions.append(model(*[test_tensor[i:i+max_sub_size] for test_tensor in test_tensors], *extra_inputs))
         return torch.vstack(predictions)
 
-def save_args(outM, args, postfix=''):
-    save_json(outM.get_filename('args%s'%postfix, 'json'), args)
+def save_args(outM, args):
+    save_json(outM.get_filename('args', 'json'), args)
 
 def get_font(fontsize=15):
     return {'weight' : 'normal', 'size': fontsize}
