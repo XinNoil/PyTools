@@ -1,4 +1,4 @@
-import csv,zipfile
+import os,csv,zipfile
 import numpy as np
 import itertools
 from more_itertools import chunked
@@ -55,7 +55,7 @@ def update_reader_ssids(reader, bssids, ssids):
     return bssids, ssids
 
 def get_ssids(filename, zipfilename=None, bssids=[], ssids=[]):
-    if zipfilename:
+    if os.path.exists(zipfilename):
         with zipfile.ZipFile(zipfilename, 'r') as zip_archive:
             bssids, ssids=update_reader_ssids(get_text_stream(filename, zip_archive), bssids, ssids)
     else:
