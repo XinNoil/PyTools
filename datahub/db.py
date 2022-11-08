@@ -224,8 +224,8 @@ class DB(object):
         save_json(self.bssids_name(), bssids_filterd)
         return bssids_filterd
     
-    def scan_ssids(self):
-        ssids_results = [get_ssids(filename, self.zip_name(), [], []) for filename in self.wfiles]
+    def scan_ssids(self, data_path=''):
+        ssids_results = [get_ssids(os.path.join(data_path,filename), self.zip_name(), [], []) for filename in self.wfiles]
         bssids_list = [bssids for bssids, ssids in ssids_results]
         ssids_list  = [ssids  for bssids, ssids in ssids_results]
         bssids = list_con(bssids_list)
