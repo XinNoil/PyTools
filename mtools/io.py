@@ -2,6 +2,7 @@ import os, csv, json, h5py, zipfile
 import scipy.io
 import numpy as np
 from .np import str2np, np2str
+import os.path as osp
 
 # IO: json, h5, csv, mat
 def tojson(o, ensure_ascii=True):
