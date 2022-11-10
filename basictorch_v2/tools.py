@@ -277,7 +277,7 @@ def load_model(model, outM=None, postfix='', filename=None, model_name=None, str
     if filename is None:
         filename = outM.get_filename('model_%s%s' % (model.name, postfix), 'pth', model_name=model_name)
     print('load from:', filename)
-    model.load_state_dict(torch.load(filename), strict=strict)
+    model.load_state_dict(torch.load(filename, map_location=torchDevice()), strict=strict)
 
 def freeze_model(model):
     for p in model.parameters():

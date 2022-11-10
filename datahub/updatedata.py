@@ -31,9 +31,12 @@ def get_DB(data_ver, date, dbtypes, is_print=False, device_i=1):
     else:
         raise Exception('Unexpected data_ver')
 
-def get_h5_DB(dataname, dbtype, is_print=False, path=None):
+def get_data_path(data_ver, DATAPATH='DEEPPRINT_DATA_PATH'):
+    return os.path.join(os.environ[DATAPATH], data_ver)
+
+def get_h5_DB(dataname, dbtype, is_print=False, path=None, data_ver='h5'):
     if path is None:
-        path = data_path_h5
+        path = get_data_path(data_ver)
     db = DB(path, dataname, dbtype, is_print=is_print)
     db.normalize_rssis()
     return db

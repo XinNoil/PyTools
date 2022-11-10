@@ -44,3 +44,6 @@ def np_repeat(data, nums):
 
 def rmse(a, b):
     return np.sqrt(np.mean((a-b)**2, axis=-1))
+
+def np_normalize(a):
+    return (a-np.min(a))/(np.max(a)-np.min(a))
