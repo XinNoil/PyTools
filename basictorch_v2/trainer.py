@@ -108,7 +108,8 @@ class Trainer(Base):
         self.losses = self.evaluate(self.losses, data_loader=data_loader)
         self.check_validation()
         self.add_losses_to_history()
-        if getattr(self, 'scheduler', scheduler) is not None:
+        scheduler = getattr(self, 'scheduler', scheduler)
+        if scheduler is not None:
             scheduler.step(self.losses['loss'])
         epoch_time = time.process_time() - self.epoch_start_time
         t.print_epoch(self.epoch, self.epochs, self.losses, epoch_time)

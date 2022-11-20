@@ -49,10 +49,14 @@ class DB(object):
                 _print('load h5 file: %s'%filename, is_print)
                 self.__dict__ = load_h5(filename)
                 self.set_bssids(bssids)
+                self.filename = filename
             elif os.path.exists(self.save_name(avg)) and is_load_h5:
                 _print('load h5 file: %s'%self.save_name(avg), is_print)
                 self.__dict__ = load_h5(self.save_name(avg))
                 self.set_bssids(bssids)
+                self.data_path = data_path
+                self.data_name = data_name
+                self.dbtype = dbtype
             elif os.path.exists(self.csv_name()):
                 _print('load csv file: %s'%self.csv_name(), is_print)
                 self.load_csv(avg)
