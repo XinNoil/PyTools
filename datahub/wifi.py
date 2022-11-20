@@ -94,12 +94,15 @@ def process_rssis(filename, bssids, zip_name=[], event=False):
             reader=csv.reader(f)
             return loadWiFiData(reader, bssids, event)
 
-def set_bssids(rssis, bssids, bssids_new):
+def set_bssids(rssis, bssids, bssids_new, default_min=None):
     inter_bssids = set(bssids).intersection(set(bssids_new))
     inter_index_self = [bssids.index(bssid)     for bssid in inter_bssids]
     inter_index_new  = [bssids_new.index(bssid) for bssid in inter_bssids]
     rssis_new = np.zeros((rssis.shape[0], len(bssids_new)))
-    if np.max(rssis)<0:
-        rssis_new = rssis_new-100
+    if default_min is None:
+        if np.max(rssis)<0:
+            rssis_new = rssis_new-100
+    else:
+        rssis_new = rssis_new+default_min
     rssis_new[:, inter_index_new] = rssis[:, inter_index_self]
     return rssis_new
