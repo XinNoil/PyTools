@@ -77,6 +77,12 @@ def list_and(l1,l2):
 def lb2li(l): # bool list to int list
     return list(map(lambda x:int(x), l))
 
+def union(l, sort=True):
+    nl = list(set(list_con(l)))
+    if sort:
+        nl.sort()
+    return nl
+
 # dict
 def merge_dict(d1, d2):
     d3 = {}
