@@ -48,6 +48,9 @@ class Mean_dis_loss(object):
     def __call__(self, y, y_pred):
         return mean_dis_loss(y, y_pred, self.sigma)
 
+def squared_error(y, y_pred):
+    return (y_pred-y)**2
+
 def mean_squared_error(y, y_pred):
     return T.mean((y_pred-y)**2)
 
@@ -117,6 +120,7 @@ mee = mean_euclidean_error
 mrl = mean_rec_loss
 mgl = mean_gen_loss
 mdl = mean_dis_loss
+se =  squared_error
 mse = mean_squared_error
 nll = negative_log_likelihood
 rmse = root_mean_square_error
@@ -131,6 +135,7 @@ loss_funcs={
     'mrl':mrl,
     'mgl':mgl,
     'mdl':mdl,
+    'se':se,
     'mse':mse,
     'nll':nll,
     'rmse':rmse,

@@ -26,8 +26,8 @@ class BDatasets(ABC):
             batch_size = batch_size if batch_size else 1000
             shuffle = False
         ds = self.ds_dict[ds_name]
-        if hasattr(self.ds_dict[ds_name], 'get_data_loader'):
-            return self.ds_dict[ds_name].get_data_loader(batch_size, shuffle)
+        if hasattr(ds, 'get_data_loader'):
+            return ds.get_data_loader(batch_size, shuffle)
         else:
             return DataLoader(ds, batch_size, shuffle=shuffle)
 
