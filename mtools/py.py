@@ -33,6 +33,12 @@ def fixed_len_str(var, fixed_len=18):
 
 fls = fixed_len_str
 
+def str_insert(a, b, c):
+    str_list = list(a)    # 字符串转list
+    str_list.insert(b, c)  # 在指定位置插入字符串
+    str_out = ''.join(str_list)    # 空字符连接
+    return  str_out
+
 # lists
 def list_find(l, a=None):
     if a is None:
