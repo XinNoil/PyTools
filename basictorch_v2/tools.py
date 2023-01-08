@@ -127,14 +127,10 @@ class OutputManger(object):
             if hasattr(args, 'exp_no'):
                 if type(args.exp_no) == str:
                     self.exp_no = args.exp_no
-                    if self.seed:
-                        seed_everything(0)
             elif hasattr(args, 'e'):
                 self.set_exp_no(args.e, seed)
             else:
                 self.exp_no = ''
-                if self.seed:
-                    seed_everything(0)
         else:
             self.set_exp_no(e, seed)
         
@@ -142,8 +138,6 @@ class OutputManger(object):
 
     def set_exp_no(self, e, seed=None):
         self.exp_no = get_exp_no(self.data_postfix, e+1)
-        if self.seed if seed is None else seed:
-            seed_everything(e)
 
     def get_filename(self, name, file_extension='csv', out_dir=None, sub_out_dir=None, output_root=None, by_exp_no=True, model_name=None, data_name=None):
         if by_exp_no and (self.exp_no is None):
@@ -191,6 +185,11 @@ def seed_everything(seed):
     torch.cuda.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.deterministic = True
+
+def seed_numpy(seed):
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    np.random.seed(seed)
 
 def data_to_device(batch_data):
     if isinstance(batch_data, torch.Tensor):
