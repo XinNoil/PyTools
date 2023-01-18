@@ -21,6 +21,13 @@ class View(nn.Module):
     def forward(self, input):
         return input.view(*self.shape)
 
+class Unsqueeze(nn.Module):
+    def __init__(self, dim):
+        self.dim = dim
+
+    def forward(self, x):
+        return torch.unsqueeze(x, self.dim)
+
 class MLinear(nn.Module):
     def __init__(self, n, in_features: int, out_features: int, bias: bool = True,
                  device=None, dtype=None):
