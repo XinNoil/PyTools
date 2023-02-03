@@ -163,6 +163,9 @@ def get_loss_func(loss_func, **params):
 def js_adv_loss(p, v):
     return T.mean(-(v*T.log(p)+(1-v)*T.log(1-p)))
 
+def jse_adv_loss(p, v):
+    return T.mean(-(v*T.log(p+eps)+(1-v)*T.log(1-p+eps)))
+
 def ls_adv_loss(p, v):
     return T.mean((p-v) ** 2)
 
@@ -173,6 +176,7 @@ def w_adv_loss(p, v):
         return p.mean()
 
 adv_losses={
+    'jse':jse_adv_loss,
     'js':js_adv_loss,
     'ls':ls_adv_loss,
     'w':w_adv_loss,

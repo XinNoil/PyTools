@@ -124,6 +124,28 @@ class RandomDrop(nn.Module):
         else:
             return x
 
+class AvgPool(nn.Module):
+    def __init__(self, dim, keepdim) -> None:
+        super().__init__()
+        self.dim = dim
+        self.keepdim = keepdim
+    
+    def forward(self, x):
+        return torch.mean(x, dim=self.dim, keepdim=self.keepdim)
+
+class Swapaxes(nn.Module):
+    def __init__(self, model, swap_input=True, swap_output=True) -> None:
+        super().__init__()
+        self.model = model
+        self.swap_input = swap_input
+        self.swap_output = swap_output
+    
+    def forward(self, x):
+        x = torch.swapaxes(x, -1, -2) if self.swap_input else x
+        x = self.model(x)
+        x = torch.swapaxes(x, -1, -2) if self.swap_output else x
+        return x
+        
 acts = {
     'relu':torch.relu,
     'tanh':torch.tanh,
@@ -142,6 +164,8 @@ act_modules = {
     'elu':nn.ELU(),
     'gelu':nn.GELU(),
     'softmax':nn.Softmax(-1),
+    None:nn.Identity(),
+    'none':nn.Identity(),
 }
 
 acts = {
