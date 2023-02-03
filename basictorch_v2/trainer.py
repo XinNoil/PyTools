@@ -230,12 +230,14 @@ class Trainer(Base):
         outM = not_none(outM, self.outM)
         return os.path.exists(outM.get_filename('model_%s%s' % (model.name, postfix), 'pth', model_name=model_name) if filename is None else filename)
 
-    def save_evaluate(self, postfix='', head=None, varList=None):
+    def save_evaluate(self, postfix='', head=None, varList=None, monitor_losses=None):
         if head is None:
             if self.validation:
+                if monitor_losses is None:
+                    monitor_losses = self.monitor_losses
                 head = 'data_ver,data_name,exp_no,epochs,batch_size,%s,%s,fit_time,val_epoch\n' % (self.monitor, 'test_%s'%self.test_monitor)
                 varList = [self.outM.data_ver, self.outM.data_name, self.outM.exp_no, self.epochs, self.batch_size,\
-                    self.monitor_losses[self.monitor], self.monitor_losses['test_%s'%self.test_monitor] if 'test_%s'%self.test_monitor in self.monitor_losses else 'None', self.fit_time, self.val_epoch]
+                    monitor_losses[self.monitor], monitor_losses['test_%s'%self.test_monitor] if 'test_%s'%self.test_monitor in monitor_losses else 'None', self.fit_time, self.val_epoch]
             else:
                 head = 'data_ver,data_name,exp_no,epochs,batch_size,loss,fit_time\n'
                 varList = [self.outM.data_ver, self.outM.data_name, self.outM.exp_no, self.epochs, self.batch_size, self.history['loss'][-1], self.fit_time]
