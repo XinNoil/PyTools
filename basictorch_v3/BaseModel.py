@@ -29,12 +29,12 @@ from .IModel import IModel
 from mtools import monkey as mk
 
 class BaseModel(IModel):
-    def __init__(self, cfg, net):
+    def __init__(self, cfg, net, **kwargs):
         self.save_name = cfg.save_name
         self.net = net
         self.last_lr = None
-        self.auto_update_scheduler = True
-        self.auto_save_model_on_epoch_end = True
+        self.auto_update_scheduler = kwargs.get('auto_update_scheduler', True)
+        self.auto_save_model_on_epoch_end = kwargs.get('auto_save_model_on_epoch_end', True)
 
         num_params = sum(p.numel() for p in self.net.parameters() if p.requires_grad)
         log.info(f'Total number of parameters: {num_params}')
@@ -42,6 +42,7 @@ class BaseModel(IModel):
         self.optimizer = self.create_optimizer(cfg.optimizer, self.net)
         self.scheduler = self.create_scheduler(cfg.scheduler, self.optimizer)
         self.loss_function = self.create_loss_function(cfg.loss_function)
+        log.info(f"{self.save_name=}")
 
     def set_device(self, device):
         self.net.to(device)
@@ -56,7 +57,6 @@ class BaseModel(IModel):
         # 当前最好的验证集和测试机损失是多少, 初始化为无穷
         self.best_val_loss = np.inf
         self.best_test_loss = np.inf
-
 
     # 至少需要重载以下两个函数
     # 一个batch data的训练, 返回一个可以直接backward的损失值
@@ -191,6 +191,7 @@ class BaseModel(IModel):
         torch.save({
             'net_state_dict': self.net.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict(),
+            'scheduler_state_dict': self.scheduler.state_dict(),
         }, save_path)
     
         log.info(f'Model saved to {save_path}')        
