@@ -333,6 +333,11 @@ def detach_losses(losses):
         losses[loss] = losses[loss].detach().item()
     return losses
 
+def item_losses(losses):
+    for loss in losses:
+        losses[loss] = losses[loss].item()
+    return losses
+
 def merge_losses(losses_list):
     losses = losses_list[0]
     for loss in losses_list[0]:
