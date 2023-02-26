@@ -28,12 +28,13 @@ import torch
 from .IModel import IModel
 from mtools import monkey as mk
 from functools import reduce
-
+from basictorch_v3.Logger import Logger
 
 class BaseModel(IModel):
-    def __init__(self, cfg, net, **kwargs):
+    def __init__(self, cfg, net, logger=None, **kwargs):
         self.save_name = cfg.save_name
         self.net = net
+        self.logger = logger if logger is not None else Logger([])
         self.last_lr = None
         self.auto_update_scheduler = kwargs.get('auto_update_scheduler', True)
         self.auto_save_model_on_epoch_end = kwargs.get('auto_save_model_on_epoch_end', True)
@@ -138,11 +139,11 @@ class BaseModel(IModel):
     def after_train(self):
         # 位移预测任务 训练集\验证集\测试集 损失\误差
         fig, ax = plt.subplots(figsize=(8, 6))
-        ax.plot(self.epoch_metrics_dict["Train Loss"]['history'], label="Train Loss")
-        if "Valid Loss" in self.epoch_metrics_dict:
-            ax.plot(self.epoch_metrics_dict["Valid Loss"]['history'], label="Valid Loss")
-        if "Test Error" in self.epoch_metrics_dict:
-            ax.plot(self.epoch_metrics_dict["Test Error"]['history'], label="Test Error")
+        ax.plot(self.history_metrics_dict["Train Loss"]['values'], label="Train Loss")
+        if "Valid Loss" in self.history_metrics_dict:
+            ax.plot(self.history_metrics_dict["Valid Loss"]['values'], label="Valid Loss")
+        if "Test Error" in self.history_metrics_dict:
+            ax.plot(self.history_metrics_dict["Test Error"]['values'], label="Test Error")
         ax.set_xlabel("Epoch")
         ax.set_ylabel("Loss or Error")
         ax.legend()
@@ -230,7 +231,7 @@ class BaseModel(IModel):
     #         self.epoch_metrics_dict[name]['values'] = []
     #         self.epoch_metrics_dict[name]['is_reduced'] = False
 
-    def log_epoch_metrics(self, name, value, reduce_fun=np.mean, save_name=None):
+    def log_epoch_metrics(self, name, value, reduce_fun=np.mean, save_name=None, save_group=None):
         if reduce_fun is None:
             raise RuntimeError(f"epoch_metrics Must Have A Reduce Function")
 
@@ -238,17 +239,19 @@ class BaseModel(IModel):
             self.epoch_metrics_dict[name] = {
                 'values': [],
                 'reduce': reduce_fun,
-                'save_name': save_name if save_name is not None else name.replace(" ", "_")
+                'save_name': save_name if save_name is not None else name.replace(" ", "_"),
+                'save_group': save_group if save_group is not None else ''
             }
         self.epoch_metrics_dict[name]['values'].append(value)
     
-    def log_epoch_metrics_dict(self, metrics_dict, reduce_fun=np.mean, save_name=None):
+    def log_epoch_metrics_dict(self, metrics_dict, reduce_fun=np.mean, save_name=None, save_group=None):
         if reduce_fun is None:
             raise RuntimeError(f"epoch_metrics Must Have A Reduce Function")
         for name in metrics_dict:
-            self.log_epoch_metrics(name, metrics_dict[name], reduce_fun=np.mean, save_name=None)
+            self.log_epoch_metrics(name, metrics_dict[name], reduce_fun=np.mean, save_name=save_name, save_group=save_group)
     
     def log_history_metrics_dict(self, epoch_id):
+        metrics_groups = {'':{}}
         for name in self.epoch_metrics_dict.keys():
             reduce_fun = self.epoch_metrics_dict[name]['reduce']
             if isinstance(reduce_fun, list):
@@ -263,7 +266,13 @@ class BaseModel(IModel):
                 }
             self.history_metrics_dict[name]['values'].append(reduce_result)
             self.history_metrics_dict[name]['epoch_id'].append(epoch_id)
-            
+            save_group = self.epoch_metrics_dict[name]['save_group']
+            if save_group in metrics_groups:
+                metrics_groups[save_group][name] = reduce_result
+            else:
+                metrics_groups[save_group] = {name:reduce_result}
+        for metrics_group in metrics_groups:
+            self.logger.log(metrics_group, metrics_groups[metrics_group], epoch_id)
     
     def print_epoch_metrics(self, epoch_id):
         for name in self.history_metrics_dict.keys():

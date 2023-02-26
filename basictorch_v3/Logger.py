@@ -39,6 +39,6 @@ class Logger():
             step: Optional step number. Most Logger implementations auto-increment this value by one with every
                 log call. You can specify your own value here.
         """
-        metrics = convert_tensors_to_scalars(metrics)
+        # metrics = convert_tensors_to_scalars(metrics)
         for logger in self._loggers:
             logger.log_metrics(metrics=metrics, step=step)
