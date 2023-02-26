@@ -96,7 +96,7 @@ class BaseModel(IModel):
     def test_batch(self, epoch_id, batch_id, batch_data):
         error_list = self.test_step(epoch_id, batch_id, batch_data)
         if error_list is not None:
-            assert(isinstance(error_list, np.array))
+            # assert(isinstance(error_list, np.array))
             self.log_epoch_metrics('Test Error', error_list, reduce_fun=[np.hstack, np.mean])
        
     def after_epoch(self, epoch_id):
@@ -240,7 +240,6 @@ class BaseModel(IModel):
                 'reduce': reduce_fun,
                 'save_name': save_name if save_name is not None else name.replace(" ", "_")
             }
-
         self.epoch_metrics_dict[name]['values'].append(value)
     
     def log_epoch_metrics_dict(self, metrics_dict, reduce_fun=np.mean, save_name=None):
@@ -256,7 +255,7 @@ class BaseModel(IModel):
                 reduce_result = reduce(lambda t,f: f(t), reduce_fun, self.epoch_metrics_dict[name]['values'])
             else:
                 reduce_result = reduce_fun(self.epoch_metrics_dict[name]['values'])
-            if name not in self.epoch_metrics_dict:
+            if name not in self.history_metrics_dict:
                 self.history_metrics_dict[name] = {
                     'values': [],
                     'epoch_id': [],
@@ -264,11 +263,12 @@ class BaseModel(IModel):
                 }
             self.history_metrics_dict[name]['values'].append(reduce_result)
             self.history_metrics_dict[name]['epoch_id'].append(epoch_id)
+            
     
     def print_epoch_metrics(self, epoch_id):
         for name in self.history_metrics_dict.keys():
             if self.history_metrics_dict[name]['epoch_id'][-1]==epoch_id:
-                log.info(f"{name}: {self.epoch_metrics_dict[name]['values'][-1]:.6f}")
+                log.info(f"{name}: {self.history_metrics_dict[name]['values'][-1]:.6f}")
 
     def get_epoch_metrics(self, name, epoch_id=-1):
         if name not in self.history_metrics_dict:
