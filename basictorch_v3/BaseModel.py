@@ -27,6 +27,8 @@ matplotlib.rcParams['legend.fontsize'] = 16
 import torch
 from .IModel import IModel
 from mtools import monkey as mk
+from functools import reduce
+
 
 class BaseModel(IModel):
     def __init__(self, cfg, net, **kwargs):
@@ -35,6 +37,9 @@ class BaseModel(IModel):
         self.last_lr = None
         self.auto_update_scheduler = kwargs.get('auto_update_scheduler', True)
         self.auto_save_model_on_epoch_end = kwargs.get('auto_save_model_on_epoch_end', True)
+
+        self.epoch_metrics_dict = {}
+        self.history_metrics_dict = {}
 
         num_params = sum(p.numel() for p in self.net.parameters() if p.requires_grad)
         log.info(f'Total number of parameters: {num_params}')
@@ -58,13 +63,16 @@ class BaseModel(IModel):
         self.best_val_loss = np.inf
         self.best_test_loss = np.inf
 
+    def before_epoch(self, epoch_id):
+        self.epoch_metrics_dict = {}
+        
     # 至少需要重载以下两个函数
     # 一个batch data的训练, 返回一个可以直接backward的损失值
     def train_step(self, epoch_id, batch_id, batch_data):
-        return {'loss':0}
+        return torch.tensor(0)
     # 一个batch data的测试, 返回一个CPU上的误差列表(np.array)
     def test_step(self, epoch_id, batch_id, batch_data):
-        return {'loss':0}
+        return torch.tensor(0)
     
     # 一个batch data的验证, 返回一个可以直接backward的损失值, 但是valid_step不会进行backward
     def valid_step(self, epoch_id, batch_id, batch_data):
@@ -75,80 +83,66 @@ class BaseModel(IModel):
 
     def train_batch(self, epoch_id, batch_id, batch_data):
         self.optimizer.zero_grad()
-        losses = self.train_step(epoch_id, batch_id, batch_data)
-        mk.magic_append([losses[_].item() for _ in losses], "train_batch_loss")
-        losses['loss'].backward()
+        loss = self.train_step(epoch_id, batch_id, batch_data)
+        self.log_epoch_metrics('Train Loss', loss.item())
+        loss.backward()
         self.optimizer.step()
 
     def valid_batch(self, epoch_id, batch_id, batch_data):
-        losses = self.valid_step(epoch_id, batch_id, batch_data)
-        mk.magic_append([losses[_].item() for _ in losses], "valid_batch_loss")  
+        loss = self.valid_step(epoch_id, batch_id, batch_data)
+        if loss is not None:
+            self.log_epoch_metrics('Valid Loss', loss.item())
 
     def test_batch(self, epoch_id, batch_id, batch_data):
-        losses = self.test_step(epoch_id, batch_id, batch_data)
-        mk.magic_append([losses[_].item() for _ in losses], "test_batch_error")
-
+        error_list = self.test_step(epoch_id, batch_id, batch_data)
+        if error_list is not None:
+            assert(isinstance(error_list, np.array))
+            self.log_epoch_metrics('Test Error', error_list, reduce_fun=[np.hstack, np.mean])
+       
     def after_epoch(self, epoch_id):
-        # 这一个 epoch 的 训练集 验证集 测试集误差
-        train_batch_loss = mk.magic_get("train_batch_loss", np.mean)
-        valid_batch_loss = mk.magic_get("valid_batch_loss", np.mean)
-        mk.magic_append(train_batch_loss, "train_epoch_loss")
-        mk.magic_append(valid_batch_loss, "valid_epoch_loss")
-        
-        log.info(f"Avg Train Loss: {train_batch_loss[0]:.6f}")
-        log.info(f"Avg Valid Loss: {valid_batch_loss[0]:.6f}")
-        
-        # 这一个 epoch 的测试集误差, 注意这里是每个样本的, 不是每个batch平均后的
-        [err_all] = mk.magic_get("test_batch_error", np.hstack)
-        err_mean = np.mean(err_all)
-        mk.magic_append([err_mean], "test_epoch_error")
-        log.info(f"Test Error: {err_mean:.6f}")
+        # 输出各项指标
+        self.log_history_metrics_dict(epoch_id)
+        self.print_epoch_metrics(epoch_id)
+        self.update_scheduler(epoch_id)
+        self.save_model_on_epoch_end(epoch_id)
 
+    def update_scheduler(self, epoch_id):
         # Scheduler 更新
         if self.auto_update_scheduler:
             if type(self.scheduler) == torch.optim.lr_scheduler.ReduceLROnPlateau:
-                self.scheduler.step(valid_batch_loss[0])
+                valid_loss_mean = self.get_epoch_metrics("Valid Loss")
+                self.scheduler.step(valid_loss_mean)
             else:
                 self.scheduler.step()
             if self.last_lr is None:
-                    self.last_lr = self.scheduler._last_lr[0]
+                self.last_lr = self.scheduler._last_lr[0]
             if self.last_lr != self.scheduler._last_lr[0]:
                 log.info(f"Updating LR: {self.last_lr}->{self.scheduler._last_lr[0]}")
                 self.last_lr = self.scheduler._last_lr[0]
-    
+        
+    def save_model_on_epoch_end(self, epoch_id):
         # 一个epoch过后网络的保存
         if self.auto_save_model_on_epoch_end:
+            valid_loss_mean = self.get_epoch_metrics("Valid Loss")
             # 保存验证集误差最小的模型
-            if valid_batch_loss[0] < self.best_val_loss:
-                self.best_val_loss = valid_batch_loss[0]
+            if valid_loss_mean and valid_loss_mean < self.best_val_loss:
+                self.best_val_loss = valid_loss_mean
                 self.save("valbest")
 
             # 保存测试集误差最小的模型
-            if err_mean < self.best_test_loss:
+            err_mean = self.get_epoch_metrics("Test Error")
+            if err_mean and err_mean < self.best_test_loss:
                 self.best_test_loss = err_mean
                 self.save("testbest")
 
-        return train_batch_loss, valid_batch_loss, err_mean
-
-    
     def after_train(self):
-        train_losses_all = mk.magic_get("train_epoch_loss")
-        valid_losses_all = mk.magic_get("valid_epoch_loss")
-        [test_error_all] = mk.magic_get("test_epoch_error")
-        df = pd.DataFrame({
-            'train_loss': train_losses_all[0],
-            'valid_loss': valid_losses_all[0],
-            'test_error': test_error_all,
-        })
-
-        os.makedirs("figure", exist_ok=True)
-        df.to_csv("figure/losses.csv", index=False, header=True)
-
         # 位移预测任务 训练集\验证集\测试集 损失\误差
         fig, ax = plt.subplots(figsize=(8, 6))
-        ax.plot(train_losses_all[0], label="Train Loss")
-        ax.plot(valid_losses_all[0], label="Valid Loss")
-        ax.plot(test_error_all, label="Test Error")
+        ax.plot(self.epoch_metrics_dict["Train Loss"]['history'], label="Train Loss")
+        if "Valid Loss" in self.epoch_metrics_dict:
+            ax.plot(self.epoch_metrics_dict["Valid Loss"]['history'], label="Valid Loss")
+        if "Test Error" in self.epoch_metrics_dict:
+            ax.plot(self.epoch_metrics_dict["Test Error"]['history'], label="Test Error")
         ax.set_xlabel("Epoch")
         ax.set_ylabel("Loss or Error")
         ax.legend()
@@ -200,6 +194,7 @@ class BaseModel(IModel):
         checkpoint = torch.load(model_path, map_location='cuda:0')
         self.net.load_state_dict(checkpoint['net_state_dict'])
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
     
 
     ##############################################Tools##################################################
@@ -229,3 +224,65 @@ class BaseModel(IModel):
         loss_function = loss_function_class(**loss_function_params)
         log.info(f"Loss Function: {loss_function_class} With {loss_function_params}")
         return loss_function
+
+    # def refresh_epoch_metrics(self):
+    #     for name in self.epoch_metrics_dict.keys():
+    #         self.epoch_metrics_dict[name]['values'] = []
+    #         self.epoch_metrics_dict[name]['is_reduced'] = False
+
+    def log_epoch_metrics(self, name, value, reduce_fun=np.mean, save_name=None):
+        if reduce_fun is None:
+            raise RuntimeError(f"epoch_metrics Must Have A Reduce Function")
+
+        if name not in self.epoch_metrics_dict:
+            self.epoch_metrics_dict[name] = {
+                'values': [],
+                'reduce': reduce_fun,
+                'save_name': save_name if save_name is not None else name.replace(" ", "_")
+            }
+
+        self.epoch_metrics_dict[name]['values'].append(value)
+    
+    def log_epoch_metrics_dict(self, metrics_dict, reduce_fun=np.mean, save_name=None):
+        if reduce_fun is None:
+            raise RuntimeError(f"epoch_metrics Must Have A Reduce Function")
+        for name in metrics_dict:
+            self.log_epoch_metrics(name, metrics_dict[name], reduce_fun=np.mean, save_name=None)
+    
+    def log_history_metrics_dict(self, epoch_id):
+        for name in self.epoch_metrics_dict.keys():
+            reduce_fun = self.epoch_metrics_dict[name]['reduce']
+            if isinstance(reduce_fun, list):
+                reduce_result = reduce(lambda t,f: f(t), reduce_fun, self.epoch_metrics_dict[name]['values'])
+            else:
+                reduce_result = reduce_fun(self.epoch_metrics_dict[name]['values'])
+            if name not in self.epoch_metrics_dict:
+                self.history_metrics_dict[name] = {
+                    'values': [],
+                    'epoch_id': [],
+                    'save_name': self.epoch_metrics_dict[name]['save_name']
+                }
+            self.history_metrics_dict[name]['values'].append(reduce_result)
+            self.history_metrics_dict[name]['epoch_id'].append(epoch_id)
+    
+    def print_epoch_metrics(self, epoch_id):
+        for name in self.history_metrics_dict.keys():
+            if self.history_metrics_dict[name]['epoch_id'][-1]==epoch_id:
+                log.info(f"{name}: {self.epoch_metrics_dict[name]['values'][-1]:.6f}")
+
+    def get_epoch_metrics(self, name, epoch_id=-1):
+        if name not in self.history_metrics_dict:
+            log.error(f"Trying To Get epoch_metrics: {name}, Not Found, Returning None")
+            return None
+        return self.history_metrics_dict[name]['values'][epoch_id]
+    
+    def save_epoch_metrics(self):
+        df = pd.DataFrame()
+
+        for name in self.history_metrics_dict.keys():
+            history_list = self.history_metrics_dict[name]['values']
+            save_name = self.history_metrics_dict[name]['save_name']
+            df[save_name] = history_list
+
+        os.makedirs("figure", exist_ok=True)
+        df.to_csv("figure/epoch_metrics.csv", index=False, header=True)
