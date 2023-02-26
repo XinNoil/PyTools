@@ -50,6 +50,12 @@ class BaseModel(IModel):
         self.loss_function = self.create_loss_function(cfg.loss_function)
         log.info(f"{self.save_name=}")
 
+        self.make_necessary_dirs()
+
+    def make_necessary_dirs(self):
+        os.makedirs("model", exist_ok=True)
+        os.makedirs("figure", exist_ok=True)
+
     def set_device(self, device):
         self.net.to(device)
 
@@ -181,7 +187,6 @@ class BaseModel(IModel):
 
 
     def save(self, message="latest"):
-        os.makedirs("model", exist_ok=True)
         save_path = f"model/{self.save_name}_{message}.pt"
         torch.save({
             'net_state_dict': self.net.state_dict(),
@@ -242,6 +247,9 @@ class BaseModel(IModel):
                 'save_name': save_name if save_name is not None else name.replace(" ", "_"),
                 'save_group': save_group if save_group is not None else ''
             }
+        if isinstance(value, torch.Tensor):
+            value = value.item()
+            
         self.epoch_metrics_dict[name]['values'].append(value)
     
     def log_epoch_metrics_dict(self, metrics_dict, reduce_fun=np.mean, save_name=None, save_group=None):
@@ -284,6 +292,12 @@ class BaseModel(IModel):
             log.error(f"Trying To Get epoch_metrics: {name}, Not Found, Returning None")
             return None
         return self.history_metrics_dict[name]['values'][epoch_id]
+
+    def get_epoch_metrics_history(self, name):
+        if name not in self.history_metrics_dict:
+            log.error(f"Trying To Get epoch_metrics: {name}, Not Found, Returning None")
+            return None
+        return self.history_metrics_dict[name]['epoch_id'], self.history_metrics_dict[name]['values']
     
     def save_epoch_metrics(self):
         df = pd.DataFrame()
@@ -293,5 +307,4 @@ class BaseModel(IModel):
             save_name = self.history_metrics_dict[name]['save_name']
             df[save_name] = history_list
 
-        os.makedirs("figure", exist_ok=True)
         df.to_csv("figure/epoch_metrics.csv", index=False, header=True)

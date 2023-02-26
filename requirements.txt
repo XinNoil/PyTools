@@ -5,3 +5,5 @@ GitPython
 einops
 h5py
 more-itertools
+tensorboard
+tensorboardX
