@@ -29,12 +29,13 @@ from .IModel import IModel
 from mtools import monkey as mk
 from functools import reduce
 from basictorch_v3.Logger import Logger
+from lightning.fabric.loggers import TensorBoardLogger
 
 class BaseModel(IModel):
     def __init__(self, cfg, net, logger=None, **kwargs):
         self.save_name = cfg.save_name
         self.net = net
-        self.logger = logger if logger is not None else Logger([])
+        self.logger = logger if logger is not None else Logger([TensorBoardLogger(root_dir='log', name='', version='')])
         self.last_lr = None
         self.auto_update_scheduler = kwargs.get('auto_update_scheduler', True)
         self.auto_save_model_on_epoch_end = kwargs.get('auto_save_model_on_epoch_end', True)
