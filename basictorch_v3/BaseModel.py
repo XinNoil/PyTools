@@ -275,6 +275,12 @@ class BaseModel(IModel):
             log.error(f"Trying To Get epoch_metrics: {name}, Not Found, Returning None")
             return None
         return self.history_metrics_dict[name]['values'][epoch_id]
+
+    def get_epoch_metrics_history(self, name):
+        if name not in self.history_metrics_dict:
+            log.error(f"Trying To Get epoch_metrics: {name}, Not Found, Returning None")
+            return None
+        return self.history_metrics_dict[name]['epoch_id'], self.history_metrics_dict[name]['values']
     
     def save_epoch_metrics(self):
         df = pd.DataFrame()
