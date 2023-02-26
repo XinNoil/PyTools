@@ -185,6 +185,8 @@ class BaseModel(IModel):
         else:
             err_df.to_csv(f"eval_rst.csv", index=False)
             des.to_csv(f"eval_des.csv")
+        
+        print('tensorboard --logdir=%s'%os.path.realpath(""))
 
 
     def save(self, message="latest"):
@@ -205,14 +207,14 @@ class BaseModel(IModel):
     
 
     ##############################################Tools##################################################
-    def get_optimizer_parameters(self, net):
+    def get_optimizer_parameters(self, net, cfg=None):
         return net.parameters()
 
     def create_optimizer(self, cfg, net):
         optimizer_type = cfg.type
         optimizer_params = mk.eval_dict_values(cfg.params)
         optimizer_class = mk.get_class("torch.optim", optimizer_type)
-        optimizer = optimizer_class(self.get_optimizer_parameters(net), **optimizer_params)
+        optimizer = optimizer_class(self.get_optimizer_parameters(net, cfg), **optimizer_params)
         log.info(f"Created Optimizer: {optimizer_class} With {optimizer_params}")
         return optimizer
         
