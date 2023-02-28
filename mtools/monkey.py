@@ -161,11 +161,11 @@ def sns_bar_label(g, ax_num='single', fmt="%.2f", fontsize=10, label_type='edge'
 def set_allowed_gpu(gpu_list):
     b_set('allowed_gpu', gpu_list)
 
-def set_current_gpu(current_gpu):
-    b_set('current_gpu', current_gpu)
+def set_current_device(current_gpu):
+    b_set('current_device', current_gpu)
 
-def get_current_gpu():
-    return b_get('current_gpu')
+def get_current_device():
+    return b_get('current_device')
 
 def get_free_gpu():
     allowed_gpu = b_get('allowed_gpu')
@@ -205,6 +205,15 @@ def eval_dict_values(dict_to_parse):
     return params_dict
 
 
+import torch
+
+def batch_to_device(batch_data, device=None):
+    if isinstance(batch_data, torch.Tensor):
+        return batch_data.to(get_current_device() if device is None else device)
+    else:
+        return tuple(batch_to_device(item) for item in batch_data)
+    # return (lambda device=device, batch_data=batch_data: [k.to(device) for k in batch_data])()
+    
 # if __name__ == "__main__":
 #     magic_append([0,2,4,5,6], "UnitTest")
 #     magic_append([1,3,4,5,7], "UnitTest")

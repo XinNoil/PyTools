@@ -4,9 +4,15 @@ import numpy as np
 from .np import str2np, np2str
 import os.path as osp
 
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return json.JSONEncoder.default(self, obj)
+    
 # IO: json, h5, csv, mat
 def tojson(o, ensure_ascii=True):
-    return json.dumps(o, default=lambda obj: obj.__dict__, sort_keys=True,ensure_ascii=ensure_ascii)
+    return json.dumps(o, default=lambda obj: obj.__dict__, sort_keys=True,ensure_ascii=ensure_ascii, cls=NumpyEncoder)
 
 def check_dir(path, is_file=False):
     if is_file:

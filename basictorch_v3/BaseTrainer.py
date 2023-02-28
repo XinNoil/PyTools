@@ -23,7 +23,6 @@ class BaseTrainer(ITrainer):
         self.model = model
         self.epoch_num = cfg.epoch_num
         self.seed = cfg.seed
-        self.save_model_every_x_epoch = cfg.save_model_every_x_epoch
 
         self.train_loader = train_loader
         self.valid_loader = valid_loader
@@ -106,10 +105,6 @@ class BaseTrainer(ITrainer):
     def after_epoch(self, epoch_id):
         self.pbar.close()
         self.model.after_epoch(epoch_id)
-        # 每间隔一定的 epoch, 保存模型
-        if self.save_model_every_x_epoch > 0:
-            if self.epoch_count % self.save_model_every_x_epoch == 0:
-                self.model.save(f"epoch_{self.epoch_count}")
 
     ###################### 训练被打断 ######################
     def on_train_interrupted(self):
@@ -121,7 +116,6 @@ class BaseTrainer(ITrainer):
     def after_train(self):
         self.model.after_train()
         log.info('Training complete')
-        self.model.save("latest")
 
     ###################### 训练流程定义 ######################
     def train(self):

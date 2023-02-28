@@ -25,11 +25,13 @@ matplotlib.rcParams['ytick.labelsize'] = 14
 matplotlib.rcParams['legend.fontsize'] = 16
 
 import torch
+from torch.utils.data import DataLoader
 from .IModel import IModel
 from mtools import monkey as mk
 from functools import reduce
 from basictorch_v3.Logger import Logger
 from lightning.fabric.loggers import TensorBoardLogger
+import shutil
 
 class BaseModel(IModel):
     def __init__(self, cfg, net, logger=None, **kwargs):
@@ -67,9 +69,12 @@ class BaseModel(IModel):
         os.makedirs("model", exist_ok=True)
         os.makedirs("figure", exist_ok=True)
         os.makedirs("evaluation", exist_ok=True)
+        if self.epoch_stages_interval>0:
+            self.model_out_subpath = f"epoch_num<{self.epoch_stages_interval}"
+            os.makedirs(f"model/{self.model_out_subpath}", exist_ok=True)
 
-    def set_device(self, device):
-        self.net.to(device)
+    def set_device(self, device=None):
+        self.net.to(mk.get_current_device() if device is None else device)
 
     def train_mode(self):
         self.net.train()
@@ -79,25 +84,33 @@ class BaseModel(IModel):
 
     def before_epoch(self, epoch_id):
         self.epoch_metrics_dict = {}
-        
+
+        if self.epoch_stages_interval>0:
+            # 本epoch会执行目录切换
+            if (epoch_id%self.epoch_stages_interval) == 0: 
+                self.save("latest")
+            
+            # 获取当前这个epoch应该保存的目录
+            cur_model_out_subpath = f"epoch_num<{((epoch_id//self.epoch_stages_interval)+1)*self.epoch_stages_interval}"
+
+            if self.model_out_subpath != cur_model_out_subpath:
+                shutil.copytree(f"model/{self.model_out_subpath}", f"model/{cur_model_out_subpath}")
+                self.model_out_subpath = cur_model_out_subpath
+            else:
+                os.makedirs(f"model/{cur_model_out_subpath}", exist_ok=True)
+
     # 至少需要重载以下两个函数
     # 一个batch data的训练, 返回一个可以直接backward的损失值
     def train_step(self, epoch_id, batch_id, batch_data):
         return torch.tensor(0)
+    
     # 一个batch data的测试, 返回一个CPU上的误差列表(np.array)
     def test_step(self, epoch_id, batch_id, batch_data):
-        return torch.tensor(0)
+        return np.array([0, 0, ...])
     
     # 一个batch data的验证, 返回一个可以直接backward的损失值, 但是valid_step不会进行backward
     def valid_step(self, epoch_id, batch_id, batch_data):
         return self.train_step(epoch_id, batch_id, batch_data)
-    # 模型该如何在一个TestDataset上进行Evaluate, 返回一个包含各项指标的字典
-    # out_dir指出了这个函数应该在什么地方保存自己的结果
-    def evaluate_step(self, test_loader, device, out_dir):
-        return {
-            'error': 0,
-            'accuracy': 0,
-        }
     
     def train_batch(self, epoch_id, batch_id, batch_data):
         self.optimizer.zero_grad()
@@ -124,21 +137,12 @@ class BaseModel(IModel):
         self.update_scheduler(epoch_id)
         self.save_model_on_epoch_end(epoch_id)
 
-    def update_scheduler(self, epoch_id):
-        # Scheduler 更新
-        if self.auto_update_scheduler:
-            if type(self.scheduler) == torch.optim.lr_scheduler.ReduceLROnPlateau:
-                valid_loss_mean = self.get_epoch_metrics("Valid Loss")
-                self.scheduler.step(valid_loss_mean)
-            else:
-                self.scheduler.step()
-            if self.last_lr is None:
-                self.last_lr = self.scheduler._last_lr[0]
-            if self.last_lr != self.scheduler._last_lr[0]:
-                log.info(f"Updating LR: {self.last_lr}->{self.scheduler._last_lr[0]}")
-                self.last_lr = self.scheduler._last_lr[0]
-
     def after_train(self):
+        self.plot_losses()
+        self.save("latest")
+        self.save_epoch_metrics()
+    
+    def plot_losses(self):
         # 位移预测任务 训练集\验证集\测试集 损失\误差
         fig, ax = plt.subplots(figsize=(8, 6))
         ax.plot(self.history_metrics_dict["Train Loss"]['values'], label="Train Loss")
@@ -153,20 +157,44 @@ class BaseModel(IModel):
         fig.savefig(f"figure/losses.png", dpi=300)
         plt.close(fig)
 
-    def evaluate(self, test_loader, suffix=None):
+    # 模型该如何在一个TestDataset上进行Evaluate, 返回一个包含各项指标的字典
+    # out_dir指出了这个函数应该在什么地方保存自己的结果
+    def evaluate_step(self, test_dataset, cfg, out_dir):
+        test_loader = DataLoader(test_dataset, batch_size=cfg.batch_size, shuffle=False)
+        for batch_id, batch_data in enumerate(test_loader):
+            batch_data = mk.batch_to_device(batch_data)
+            errors = self.test_step(0, batch_id, batch_data)
+            mk.magic_append([errors], "evaluate_batch_error")
+        error_list = mk.magic_get("evaluate_batch_error", np.hstack)
+        err_df = pd.DataFrame({
+            'Err': error_list,
+        })
+
+        des = err_df.describe(percentiles=[.25, .5, .75, .95, .99]).T
+
+        err_df.to_csv(f"{out_dir}/eval_rst.csv", index=False)
+        des.to_csv(f"{out_dir}/eval_des.csv")
+
+        return {
+            'Error Mean': np.around(error_list.mean()*100, 3),
+            'Error Std': np.around(error_list.std()*100, 3),
+        }
+    
+    def evaluate(self, test_dataset, cfg, suffix=None):
         gpu_id = mk.get_free_gpu()
         device = f"cuda:{gpu_id}"
-        log.info(f"Auto Selecting cuda:{gpu_id} GPU")
+        mk.set_current_device(device)
+        log.info(f"Auto Selecting Device: {device}")
 
         mk.write("Evaluation:")
         if self.epoch_stages_interval<0:
             for model_name in self.evaluate_list:
                 if os.path.exists(f"model/{model_name}.pt"):
-                    self.load(model_path, device)
-                    self.set_device(device)
+                    self.load(model_path)
+                    self.set_device()
                     self.valid_mode()
                     out_dir = f"evaluation"
-                    rst_dict = self.evaluate_step(test_loader, device, out_dir)
+                    rst_dict = self.evaluate_step(test_dataset, cfg, out_dir)
                     mk.write(f"{model_name}:")
                     for key, val in rst_dict.items():
                         mk.write(f"    {key}: {val}")
@@ -181,12 +209,12 @@ class BaseModel(IModel):
                         if not sub_dir_writed:
                             mk.write(f"{sub_dir}:")
                             sub_dir_writed = True
-                        self.load(model_path, device)
-                        self.set_device(device)
+                        self.load(model_path)
+                        self.set_device()
                         self.valid_mode()
                         out_dir = f"evaluation/{sub_dir}"
                         os.makedirs(out_dir, exist_ok=True)
-                        rst_dict = self.evaluate_step(test_loader, device, out_dir)
+                        rst_dict = self.evaluate_step(test_dataset, cfg, out_dir)
                         mk.write(f"    {model_name}:")
                         for key, val in rst_dict.items():
                             mk.write(f"        {key}: {val}")
@@ -210,8 +238,8 @@ class BaseModel(IModel):
     
         log.info(f'Model saved to {save_path}')        
 
-    def load(self, model_path, device):
-        checkpoint = torch.load(model_path, map_location=device)
+    def load(self, model_path, device=None):
+        checkpoint = torch.load(model_path, map_location=mk.get_current_device() if device is None else device)
         self.net.load_state_dict(checkpoint['net_state_dict'])
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
@@ -296,6 +324,20 @@ class BaseModel(IModel):
             if self.history_metrics_dict[name]['epoch_id'][-1]==epoch_id:
                 log.info(f"{name}: {self.history_metrics_dict[name]['values'][-1]:.6f}")
 
+    def update_scheduler(self, epoch_id):
+        # Scheduler 更新
+        if self.auto_update_scheduler:
+            if type(self.scheduler) == torch.optim.lr_scheduler.ReduceLROnPlateau:
+                valid_loss_mean = self.get_epoch_metrics("Valid Loss")
+                self.scheduler.step(valid_loss_mean)
+            else:
+                self.scheduler.step()
+            if self.last_lr is None:
+                self.last_lr = self.scheduler._last_lr[0]
+            if self.last_lr != self.scheduler._last_lr[0]:
+                log.info(f"Updating LR: {self.last_lr}->{self.scheduler._last_lr[0]}")
+                self.last_lr = self.scheduler._last_lr[0]
+    
     def get_epoch_metrics(self, name, epoch_id=-1):
         if name not in self.history_metrics_dict:
             log.error(f"Trying To Get epoch_metrics: {name}, Not Found, Returning None")
@@ -312,12 +354,31 @@ class BaseModel(IModel):
         df = pd.DataFrame()
 
         for name in self.history_metrics_dict.keys():
-            history_list = self.history_metrics_dict[name]['values']
+            index_list, val_list = self.get_epoch_metrics_history(name)
             save_name = self.history_metrics_dict[name]['save_name']
-            df[save_name] = history_list
+            tmp_df = pd.DataFrame(index=index_list, data={
+                save_name:val_list
+            })
+            df = pd.concat([df, tmp_df], axis=1)
 
+        df.reset_index(inplace=True, drop=False)
+        df.rename(columns={"index": "epoch_id"}, inplace=True)
         df.to_csv("figure/epoch_metrics.csv", index=False, header=True)
 
+    # 一个epoch过后网络的保存
+    def save_model_on_epoch_end(self, epoch_id):
+        for metrics_name in self.history_metrics_dict.keys():
+            if metrics_name in self.save_on_dict:
+                old_val = self.save_on_dict[metrics_name]['best_val']
+                now_val = self.history_metrics_dict[metrics_name]['values'][-1]
+                save_name = self.save_on_dict[metrics_name]['save_name']
+                if self.save_on_dict[metrics_name]['mode']=='min' and now_val < old_val:
+                    self.save_on_dict[metrics_name]['best_val'] = now_val
+                    self.save(save_name)
+                elif self.save_on_dict[metrics_name]['mode']=='max' and now_val > old_val:
+                    self.save_on_dict[metrics_name]['best_val'] = now_val
+                    self.save(save_name)
+    
     def save_on_metrics(self, metrics_name, save_name=None, mode='min'):
         if isinstance(metrics_name, list):
             for _ in metrics_name:
@@ -339,28 +400,3 @@ class BaseModel(IModel):
                 self.evaluate_on_metrics(_)
             return
         self.evaluate_list.append(f"{metrics_name.replace(' ', '_')}_best")
-    
-    # 一个epoch过后网络的保存
-    def save_model_on_epoch_end(self, epoch_id):
-        if self.epoch_stages_interval>0:
-            if epoch_id==0:
-                self.model_out_subpath = f"epoch_num<{min(self.epoch_stages_interval, self.trainer.epoch_num)}"
-                os.makedirs(f"model/{self.model_out_subpath}", exist_ok=True)
-
-        for metrics_name in self.history_metrics_dict.keys():
-            if metrics_name in self.save_on_dict:
-                old_val = self.save_on_dict[metrics_name]['best_val']
-                now_val = self.history_metrics_dict[metrics_name]['values'][-1]
-                save_name = self.save_on_dict[metrics_name]['save_name']
-                if self.save_on_dict[metrics_name]['mode']=='min' and now_val < old_val:
-                    self.save_on_dict[metrics_name]['best_val'] = now_val
-                    self.save(save_name)
-                elif self.save_on_dict[metrics_name]['mode']=='max' and now_val > old_val:
-                    self.save_on_dict[metrics_name]['best_val'] = now_val
-                    self.save(save_name)
-
-        if self.epoch_stages_interval>0:
-            if (epoch_id+1)%self.epoch_stages_interval==0:
-                self.save("latest")
-                self.model_out_subpath = f"epoch_num<{min(epoch_id+1+self.epoch_stages_interval, self.trainer.epoch_num)}"
-                os.makedirs(f"model/{self.model_out_subpath}", exist_ok=True)
