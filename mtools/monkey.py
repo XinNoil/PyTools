@@ -10,9 +10,18 @@ import numpy as np
 np.set_printoptions(precision=4, suppress=True, formatter={'float_kind':'{:f}'.format})
 
 
+blackboard = {}
 magicHolderInstance = None
 to_writes = ""
-allowed_gpu = None
+
+def b_set(name, value):
+    global blackboard
+    blackboard[name] = value
+    return
+
+def b_get(name):
+    global blackboard
+    return blackboard.get(name, None)
 
 class MagicHolder():
     def __init__(self):
@@ -150,11 +159,16 @@ def sns_bar_label(g, ax_num='single', fmt="%.2f", fontsize=10, label_type='edge'
                 ax.bar_label(bars, fmt=fmt, fontsize=fontsize, label_type=label_type, color=color)
 
 def set_allowed_gpu(gpu_list):
-    global allowed_gpu
-    allowed_gpu = gpu_list
+    b_set('allowed_gpu', gpu_list)
+
+def set_current_gpu(current_gpu):
+    b_set('current_gpu', current_gpu)
+
+def get_current_gpu():
+    return b_get('current_gpu')
 
 def get_free_gpu():
-    global allowed_gpu
+    allowed_gpu = b_get('allowed_gpu')
 
     import subprocess
     # Get the list of GPUs via nvidia-smi
