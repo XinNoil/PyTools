@@ -200,7 +200,9 @@ class BaseModel(IModel):
         log.info(f'Model saved to {save_path}')        
 
     def load(self, model_path):
-        checkpoint = torch.load(model_path, map_location='cuda:0')
+        gpu_id = mk.get_free_gpu()
+        device = f"cuda:{gpu_id}"
+        checkpoint = torch.load(model_path, map_location=device)
         self.net.load_state_dict(checkpoint['net_state_dict'])
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])

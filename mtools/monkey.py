@@ -12,6 +12,7 @@ np.set_printoptions(precision=4, suppress=True, formatter={'float_kind':'{:f}'.f
 
 magicHolderInstance = None
 to_writes = ""
+allowed_gpu = None
 
 class MagicHolder():
     def __init__(self):
@@ -148,8 +149,13 @@ def sns_bar_label(g, ax_num='single', fmt="%.2f", fontsize=10, label_type='edge'
             for bars in ax.containers:
                 ax.bar_label(bars, fmt=fmt, fontsize=fontsize, label_type=label_type, color=color)
 
+def set_allowed_gpu(gpu_list):
+    global allowed_gpu
+    allowed_gpu = gpu_list
 
 def get_free_gpu():
+    global allowed_gpu
+
     import subprocess
     # Get the list of GPUs via nvidia-smi
     smi_query_result = subprocess.check_output(
@@ -159,7 +165,14 @@ def get_free_gpu():
     gpu_info = smi_query_result.decode("utf-8").strip().split("\n")
 
     memory_available = [int(x.split()[2]) for x in gpu_info]
-    return np.argmax(memory_available)
+    gpu_id_freemem_descending = np.argsort(memory_available)[::-1]
+    if allowed_gpu and isinstance(allowed_gpu, list):
+        gpu_id_freemem_descending = [_ for _ in gpu_id_freemem_descending if _ in allowed_gpu]
+        
+    if len(gpu_id_freemem_descending) > 0:
+        return gpu_id_freemem_descending[0]
+    else:
+        raise RuntimeError(f"There is No Available GPU!")    
 
 
 def get_class(module_path, class_name):
