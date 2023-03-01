@@ -56,7 +56,7 @@ class BaseTrainer(ITrainer):
     ###################### 一个epoch的开始 ######################
     def before_epoch(self, epoch_id):
         log.info("\n")
-        log.info(f"Epoch: {epoch_id}")
+        log.info(f"Epoch: {epoch_id} / {self.epoch_num}")
         self.model.before_epoch(epoch_id)
         # 进度条
         self.pbar = tqdm(total=len(self.train_loader)+len(self.valid_loader)+len(self.test_loader), desc=f"Epoch {epoch_id}")        

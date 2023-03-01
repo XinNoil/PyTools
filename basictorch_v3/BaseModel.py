@@ -25,7 +25,7 @@ matplotlib.rcParams['ytick.labelsize'] = 14
 matplotlib.rcParams['legend.fontsize'] = 16
 
 import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
 from .IModel import IModel
 from mtools import monkey as mk
 from functools import reduce
@@ -36,7 +36,7 @@ import shutil
 class BaseModel(IModel):
     def __init__(self, cfg, net, logger=None, **kwargs):
         self.save_name = cfg.save_name
-        self.epoch_stages_interval = cfg.epoch_stages_interval
+        self.epoch_stages_interval = getattr(cfg, 'epoch_stages_interval', -1)
         self.net = net
         self.logger = logger if logger is not None else Logger([TensorBoardLogger(root_dir='log', name='', version='')])
         self.last_lr = None
@@ -160,12 +160,18 @@ class BaseModel(IModel):
     # 模型该如何在一个TestDataset上进行Evaluate, 返回一个包含各项指标的字典
     # out_dir指出了这个函数应该在什么地方保存自己的结果
     def evaluate_step(self, test_dataset, cfg, out_dir, model_name):
-        test_loader = DataLoader(test_dataset, batch_size=cfg.batch_size, shuffle=False)
+        if isinstance(test_dataset, DataLoader):
+            test_loader = test_dataset
+        elif isinstance(test_dataset, Dataset):
+            test_loader = DataLoader(test_dataset, batch_size=cfg.batch_size, shuffle=False)
+        else:
+            raise TypeError(f"Unexpected test_dataset type :{type(test_dataset)}")
+
         for batch_id, batch_data in enumerate(test_loader):
             batch_data = mk.batch_to_device(batch_data)
             errors = self.test_step(0, batch_id, batch_data)
             mk.magic_append([errors], "evaluate_batch_error")
-        error_list = mk.magic_get("evaluate_batch_error", np.hstack)
+        (error_list,) = mk.magic_get("evaluate_batch_error", np.hstack)
         err_df = pd.DataFrame({
             'Err': error_list,
         })
@@ -174,13 +180,12 @@ class BaseModel(IModel):
 
         err_df.to_csv(f"{out_dir}/eval_{model_name}_rst.csv", index=False)
         des.to_csv(f"{out_dir}/eval_{model_name}_des.csv")
-
         return {
             'Error Mean': np.around(error_list.mean()*100, 3),
             'Error Std': np.around(error_list.std()*100, 3),
         }
     
-    def evaluate(self, test_dataset, cfg, suffix=None):
+    def evaluate(self, test_dataset, cfg=None, suffix=None):
         gpu_id = mk.get_free_gpu()
         device = f"cuda:{gpu_id}"
         mk.set_current_device(device)
@@ -189,6 +194,7 @@ class BaseModel(IModel):
         mk.write("Evaluation:")
         if self.epoch_stages_interval<0:
             for model_name in self.evaluate_list:
+                model_path = f"model/{model_name}.pt"
                 if os.path.exists(f"model/{model_name}.pt"):
                     self.load(model_path)
                     self.set_device()
