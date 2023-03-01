@@ -159,7 +159,7 @@ class BaseModel(IModel):
 
     # 模型该如何在一个TestDataset上进行Evaluate, 返回一个包含各项指标的字典
     # out_dir指出了这个函数应该在什么地方保存自己的结果
-    def evaluate_step(self, test_dataset, cfg, out_dir):
+    def evaluate_step(self, test_dataset, cfg, out_dir, model_name):
         test_loader = DataLoader(test_dataset, batch_size=cfg.batch_size, shuffle=False)
         for batch_id, batch_data in enumerate(test_loader):
             batch_data = mk.batch_to_device(batch_data)
@@ -172,8 +172,8 @@ class BaseModel(IModel):
 
         des = err_df.describe(percentiles=[.25, .5, .75, .95, .99]).T
 
-        err_df.to_csv(f"{out_dir}/eval_rst.csv", index=False)
-        des.to_csv(f"{out_dir}/eval_des.csv")
+        err_df.to_csv(f"{out_dir}/eval_{model_name}_rst.csv", index=False)
+        des.to_csv(f"{out_dir}/eval_{model_name}_des.csv")
 
         return {
             'Error Mean': np.around(error_list.mean()*100, 3),
@@ -194,7 +194,7 @@ class BaseModel(IModel):
                     self.set_device()
                     self.valid_mode()
                     out_dir = f"evaluation"
-                    rst_dict = self.evaluate_step(test_dataset, cfg, out_dir)
+                    rst_dict = self.evaluate_step(test_dataset, cfg, out_dir, model_name)
                     mk.write(f"{model_name}:")
                     for key, val in rst_dict.items():
                         mk.write(f"    {key}: {val}")
@@ -214,7 +214,7 @@ class BaseModel(IModel):
                         self.valid_mode()
                         out_dir = f"evaluation/{sub_dir}"
                         os.makedirs(out_dir, exist_ok=True)
-                        rst_dict = self.evaluate_step(test_dataset, cfg, out_dir)
+                        rst_dict = self.evaluate_step(test_dataset, cfg, out_dir, model_name)
                         mk.write(f"    {model_name}:")
                         for key, val in rst_dict.items():
                             mk.write(f"        {key}: {val}")
