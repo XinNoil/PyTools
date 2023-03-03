@@ -165,7 +165,12 @@ def set_current_device(current_gpu):
     b_set('current_device', current_gpu)
 
 def get_current_device():
-    return b_get('current_device')
+    device = b_get('current_device')
+    if device is None:
+        gpu_id = get_free_gpu()
+        device = f"cuda:{gpu_id}"
+        set_current_device(device)
+    return device
 
 def get_free_gpu():
     allowed_gpu = b_get('allowed_gpu')
