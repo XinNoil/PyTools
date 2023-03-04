@@ -29,9 +29,7 @@ class BaseTrainer(ITrainer):
         self.test_loader = test_loader
 
         if cfg.device=='auto':
-            gpu_id = mk.get_free_gpu()
-            log.info(f"Auto Selecting cuda:{gpu_id} GPU")
-            self.device = f"cuda:{gpu_id}"
+            self.device = mk.get_current_device()
         else:
             self.device = torch.device(cfg.device if torch.cuda.is_available() else 'cpu')
 
