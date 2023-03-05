@@ -186,9 +186,7 @@ class BaseModel(IModel):
         }
     
     def evaluate(self, test_dataset, cfg=None, suffix=None):
-        gpu_id = mk.get_free_gpu()
-        device = f"cuda:{gpu_id}"
-        mk.set_current_device(device)
+        device = mk.get_current_device()
         log.info(f"Auto Selecting Device: {device}")
 
         mk.write("Evaluation:")
