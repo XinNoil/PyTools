@@ -14,15 +14,22 @@ class NumpyEncoder(json.JSONEncoder):
 def tojson(o, ensure_ascii=True):
     return json.dumps(o, default=lambda obj: obj.__dict__, sort_keys=True,ensure_ascii=ensure_ascii, cls=NumpyEncoder)
 
-def check_dir(path, is_file=False):
+def _print(*args, is_print=True):
+    if is_print:
+        print(*args)
+
+def check_dir(path, is_file=False, is_print=True):
     if is_file:
         sub_paths = path.split(os.path.sep)
         path = os.path.sep.join(sub_paths[:-1])
     if not os.path.exists(path):
         try:
             os.makedirs(path)
+            _print('mkdir: %s'%path, is_print=is_print)
         except:
-            print('mkdir fail: %s'%path)
+            _print('mkdir fail: %s'%path, is_print=is_print)
+    else:
+        _print('mkdir exist: %s'%path, is_print=is_print)
     return path
 
 def file_dir(file):
