@@ -330,11 +330,11 @@ class BaseModel(IModel):
             if self.history_metrics_dict[name]['epoch_id'][-1]==epoch_id:
                 log.info(f"{name}: {self.history_metrics_dict[name]['values'][-1]:.6f}")
 
-    def update_scheduler(self, epoch_id):
+    def update_scheduler(self, epoch_id, monitor="Valid Loss"):
         # Scheduler 更新
         if self.auto_update_scheduler:
             if type(self.scheduler) == torch.optim.lr_scheduler.ReduceLROnPlateau:
-                valid_loss_mean = self.get_epoch_metrics("Valid Loss")
+                valid_loss_mean = self.get_epoch_metrics(monitor)
                 self.scheduler.step(valid_loss_mean)
             else:
                 self.scheduler.step()
