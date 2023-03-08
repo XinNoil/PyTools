@@ -34,7 +34,7 @@ from lightning.fabric.loggers import TensorBoardLogger
 import shutil
 
 class BaseModel(IModel):
-    def __init__(self, cfg, net, logger=None, **kwargs):
+    def __init__(self, cfg, net, logger=None, save_on_metrics_name=["Valid Loss", "Test Error"], evaluate_on_metrics_names=["Valid Loss", "Test Error"], **kwargs):
         self.save_name = cfg.save_name
         self.epoch_stages_interval = getattr(cfg, 'epoch_stages_interval', -1)
         self.net = net
@@ -61,9 +61,8 @@ class BaseModel(IModel):
         log.info(f"{self.save_name=}")
 
         self.make_necessary_dirs()
-
-        self.save_on_metrics(["Valid Loss", "Test Error"])
-        self.evaluate_on_metrics(["Valid Loss", "Test Error"])
+        self.save_on_metrics(save_on_metrics_name)
+        self.evaluate_on_metrics(evaluate_on_metrics_names)
 
     def make_necessary_dirs(self):
         os.makedirs("model", exist_ok=True)
@@ -251,7 +250,7 @@ class BaseModel(IModel):
 
     ##############################################Tools##################################################
     def get_optimizer_parameters(self, net, cfg=None):
-        return net.parameters()
+        return net.parameters() if hasattr(net, 'parameters') else net
 
     def create_optimizer(self, cfg, net):
         optimizer_type = cfg.type
@@ -280,6 +279,9 @@ class BaseModel(IModel):
     def log_epoch_metrics(self, name, value, reduce_fun=np.mean, save_name=None, save_group=None):
         if reduce_fun is None:
             raise RuntimeError(f"epoch_metrics Must Have A Reduce Function")
+        
+        if value is None:
+            return
 
         if name not in self.epoch_metrics_dict:
             self.epoch_metrics_dict[name] = {
@@ -297,7 +299,7 @@ class BaseModel(IModel):
         if reduce_fun is None:
             raise RuntimeError(f"epoch_metrics Must Have A Reduce Function")
         for name in metrics_dict:
-            self.log_epoch_metrics(name, metrics_dict[name], reduce_fun=np.mean, save_name=save_name, save_group=save_group)
+            self.log_epoch_metrics(name, metrics_dict[name], reduce_fun=reduce_fun, save_name=save_name, save_group=save_group)
     
     def log_history_metrics_dict(self, epoch_id):
         metrics_groups = {'':{}}
