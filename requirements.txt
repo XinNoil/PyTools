@@ -7,5 +7,14 @@ h5py
 more-itertools
 tensorboard
 tensorboardX
+pandas
 hydra
 hydra-joblib-launcher
+hydra-core
+hydra_colorlog
+seaborn
+tables
+tqdm
+scipy
+ipdb
+lightning-fabric

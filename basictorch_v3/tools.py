@@ -11,3 +11,11 @@ def n2t(num, tensortype=torch.FloatTensor, device=None, **kwargs):
 
 def t2n(tensor):
     return tensor.detach().cpu().numpy()
+
+def freeze_model(model):
+    for p in model.parameters():
+        p.requires_grad = False
+
+def unfreeze_model(model):
+    for p in model.parameters():
+        p.requires_grad = True
