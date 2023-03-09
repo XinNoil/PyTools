@@ -186,7 +186,9 @@ class BaseModel(IModel):
     
     def evaluate(self, test_dataset, cfg=None, suffix=None):
         device = mk.get_current_device()
-        log.info(f"Auto Selecting Device: {device}")
+        log.info("\n\n")
+        log.info("Start Evaluating")
+        log.info(f"Selecting Device: {device}")
 
         mk.write("Evaluation:")
         if self.epoch_stages_interval<0:
