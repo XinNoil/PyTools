@@ -197,7 +197,7 @@ class BaseModel(IModel):
             for model_name in self.evaluate_list:
                 model_path = f"model/{model_name}.pt"
                 if os.path.exists(f"model/{model_name}.pt"):
-                    self.load(model_path)
+                    self.load(model_path, load_opti=False)
                     self.set_device()
                     self.valid_mode()
                     out_dir = f"evaluation"
@@ -216,7 +216,7 @@ class BaseModel(IModel):
                         if not sub_dir_writed:
                             mk.write(f"{sub_dir}:")
                             sub_dir_writed = True
-                        self.load(model_path)
+                        self.load(model_path, load_opti=False)
                         self.set_device()
                         self.valid_mode()
                         out_dir = f"evaluation/{sub_dir}"
@@ -245,11 +245,12 @@ class BaseModel(IModel):
     
         log.info(f'Model saved to {save_path}')        
 
-    def load(self, model_path, device=None):
+    def load(self, model_path, device=None, strict=True, load_opti=True):
         checkpoint = torch.load(model_path, map_location=mk.get_current_device() if device is None else device)
-        self.net.load_state_dict(checkpoint['net_state_dict'])
-        self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+        self.net.load_state_dict(checkpoint['net_state_dict'], strict=strict)
+        if load_opti:
+            self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
     
 
     ##############################################Tools##################################################
