@@ -1,5 +1,9 @@
-from lightning.fabric.loggers import CSVLogger, TensorBoardLogger, Logger
-from lightning.fabric.utilities.apply_func import convert_tensors_to_scalars, convert_to_tensors
+try:
+    from lightning.fabric.loggers import CSVLogger, TensorBoardLogger, Logger
+    from lightning.fabric.utilities.apply_func import convert_tensors_to_scalars, convert_to_tensors
+except:
+    from lightning_fabric.loggers import CSVLogger, TensorBoardLogger, Logger
+    from lightning_fabric.utilities.apply_func import convert_tensors_to_scalars, convert_to_tensors
 from typing import Any, Callable, cast, Dict, Generator, List, Mapping, Optional, overload, Sequence, Tuple, Union
 
 # https://pytorch-lightning.readthedocs.io/en/stable/fabric/guide/logging.html
