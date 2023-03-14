@@ -41,7 +41,6 @@ class BaseModel(IModel):
         self.logger = logger if logger is not None else Logger([TensorBoardLogger(root_dir='log', name='', version='')])
         self.last_lr = None
         self.auto_update_scheduler = kwargs.get('auto_update_scheduler', True)
-        self.auto_save_model_on_epoch_end = kwargs.get('auto_save_model_on_epoch_end', True)
 
         self.epoch_metrics_dict = {}
         self.history_metrics_dict = {}
