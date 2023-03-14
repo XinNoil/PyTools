@@ -14,12 +14,6 @@ blackboard = {}
 magicHolderInstance = None
 to_writes = ""
 
-def get_cfg(cfg, name, default=None):
-    if name in cfg:
-        return cfg[name]
-    else:
-        return default
-
 def b_set(name, value):
     global blackboard
     blackboard[name] = value
