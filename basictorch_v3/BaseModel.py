@@ -129,7 +129,8 @@ class BaseModel(IModel):
         error_list = self.test_step(epoch_id, batch_id, batch_data)
         if error_list is not None:
             # assert(isinstance(error_list, np.array))
-            self.log_epoch_metrics('Test Error', error_list, reduce_fun=[np.hstack, np.mean])
+            test_error_list = error_list[:, 0] if len(error_list.shape)>1 else error_list
+            self.log_epoch_metrics('Test Error', test_error_list, reduce_fun=[np.hstack, np.mean])
        
     def after_epoch(self, epoch_id):
         # 输出各项指标
@@ -171,19 +172,22 @@ class BaseModel(IModel):
         for batch_id, batch_data in enumerate(test_loader):
             batch_data = mk.batch_to_device(batch_data)
             errors = self.test_step(0, batch_id, batch_data)
-            mk.magic_append([errors], "evaluate_batch_error")
-        (error_list,) = mk.magic_get("evaluate_batch_error", np.hstack)
-        err_df = pd.DataFrame({
-            'Err': error_list,
-        })
+            mk.magic_append([errors.reshape(len(errors),-1)], "evaluate_batch_error")
+        
+        (error_list,) = mk.magic_get("evaluate_batch_error", np.vstack)
+        error_cols = ['Err%d'%i for i in range(error_list.shape[1])]
+        # err_df = pd.DataFrame({
+        #     'Err': error_list,
+        # })
+        err_df = pd.DataFrame(error_list,columns=error_cols)
 
         des = err_df.describe(percentiles=[.25, .5, .75, .95, .99]).T
 
         err_df.to_csv(f"{out_dir}/eval_{model_name}_rst.csv", index=False)
         des.to_csv(f"{out_dir}/eval_{model_name}_des.csv")
         return {
-            'Error Mean': np.around(error_list.mean()*100, 3),
-            'Error Std': np.around(error_list.std()*100, 3),
+            'Error Mean': np.around(error_list[:, 0].mean()*100, 3),
+            'Error Std': np.around(error_list[:, 0].std()*100, 3),
         }
     
     def evaluate(self, test_dataset, cfg=None, suffix=None):
@@ -311,7 +315,10 @@ class BaseModel(IModel):
         for name in self.epoch_metrics_dict.keys():
             reduce_fun = self.epoch_metrics_dict[name]['reduce']
             if isinstance(reduce_fun, list):
-                reduce_result = reduce(lambda t,f: f(t), reduce_fun, self.epoch_metrics_dict[name]['values'])
+                try:
+                    reduce_result = reduce(lambda t,f: f(t), reduce_fun, self.epoch_metrics_dict[name]['values'])
+                except:
+                    pdb.set_trace()
             else:
                 reduce_result = reduce_fun(self.epoch_metrics_dict[name]['values'])
             if name not in self.history_metrics_dict:
