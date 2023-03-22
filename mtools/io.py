@@ -3,6 +3,21 @@ import scipy.io
 import numpy as np
 from .np import str2np, np2str
 import os.path as osp
+import re
+
+def glob(walk_path, pattern, _type='file'):
+    paths = os.walk(walk_path)
+    file_paths = []
+    for path, dir_list, file_list in paths:
+        if _type == 'file':
+            for file_name in file_list:
+                if re.match(pattern, file_name):
+                    file_paths.append(osp.join(path, file_name))
+        elif _type == 'dir':
+            for file_name in dir_list:
+                if re.match(pattern, file_name):
+                    file_paths.append(osp.join(path, file_name))
+    return file_paths
 
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -54,8 +69,8 @@ def save_json(filename, obj, ensure_ascii=True, encoding=None):
         f.write(str_json)
         f.close()
 
-def save_h5(filename, obj, utf=False):
-    f=h5py.File(filename,'w')
+def save_h5(filename, obj, utf=False, mode='w'):
+    f=h5py.File(filename,mode)
     if hasattr(obj, '__dict__'):
         __dict__ = obj.__dict__
     else:
@@ -83,8 +98,8 @@ def load_h5(filename):
             __dict__[k] = np2str(v)
     return __dict__
 
-def csvread(filename,delimiter=','):
-    return np.loadtxt(filename,delimiter=delimiter)
+def csvread(filename,delimiter=',',**kwargs):
+    return np.loadtxt(filename,delimiter=delimiter, **kwargs)
 
 def csvwrite(filename, data, delimiter=',', fmt='%.4f'):
     np.savetxt(filename ,data, delimiter=delimiter, fmt=fmt)
@@ -125,3 +140,7 @@ def read_file(file_name, encoding=None):
 # print
 def print_mat_eq(name,val):
     print('%s=%s;'%(name, val))
+
+def print_each(str_list):
+    for _ in str_list:
+        print(_)

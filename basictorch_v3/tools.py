@@ -19,3 +19,10 @@ def freeze_model(model):
 def unfreeze_model(model):
     for p in model.parameters():
         p.requires_grad = True
+
+def data_to_device(batch_data, device=None):
+    device = mk.get_current_device() if device is None else device
+    if isinstance(batch_data, torch.Tensor):
+        return batch_data.to(device)
+    else:
+        return tuple(data_to_device(item, device) for item in batch_data)

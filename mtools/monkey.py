@@ -2,7 +2,7 @@
 
 import os
 import pdb
-
+import torch
 import pandas as pd
 pd.set_option('display.float_format',lambda x : '%.4f' % x)
 
@@ -208,9 +208,6 @@ def eval_dict_values(dict_to_parse):
         except:
             params_dict[key] = value
     return params_dict
-
-
-import torch
 
 def batch_to_device(batch_data, device=None):
     if isinstance(batch_data, torch.Tensor):
