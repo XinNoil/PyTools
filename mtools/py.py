@@ -59,8 +59,14 @@ def list_avg(l):
     return np.mean(np.array(l),0).tolist()
 
 def list_remove(l, v):
-    return list(filter(lambda a: a != v, l))
+    if isinstance(v, list):
+        return list(filter(lambda a: a not in v, l))
+    else:
+        return list(filter(lambda a: a != v, l))
 
+def list_keep(l, v):
+    return list(filter(lambda a: a in v, l))
+    
 def unique(l):
     return list(set(l))
 
