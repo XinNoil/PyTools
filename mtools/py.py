@@ -55,6 +55,11 @@ def list_con(l):
 def list_ind(l, ind):
     return [l[i] for i in ind]
 
+def list_set(l, inds, vals):
+    for ind,val in zip(inds, vals):
+        l[ind] = val
+    return l
+
 def list_avg(l):
     return np.mean(np.array(l),0).tolist()
 

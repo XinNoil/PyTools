@@ -28,10 +28,14 @@ class BaseTrainer(ITrainer):
         self.valid_loader = valid_loader
         self.test_loader = test_loader
 
+        self.fast_train = cfg.get('fast_train', False)
+        self.fast_test = cfg.get('fast_test', False)
+
         if cfg.device=='auto':
             self.device = mk.get_current_device()
         else:
             self.device = torch.device(cfg.device if torch.cuda.is_available() else 'cpu')
+            mk.set_current_device(cfg.device)
         self.model.set_trainer(self)
         log.info(f"Training Device: {self.device}")
         log.info(f"Training Epochs: {self.epoch_num}")
@@ -70,6 +74,8 @@ class BaseTrainer(ITrainer):
             self.model.after_train_batch(epoch_id, batch_id, batch_data)
             self.pbar.update()
             self.step_count += 1
+            if self.fast_train:
+                break
         self.model.after_train_epoch(epoch_id)
 
     ###################### 一个epoch的验证 ######################
@@ -83,6 +89,8 @@ class BaseTrainer(ITrainer):
             self.model.valid_batch(epoch_id, batch_id, batch_data)
             self.model.after_valid_batch(epoch_id, batch_id, batch_data)
             self.pbar.update()
+            if self.fast_train:
+                break
         self.model.after_valid_epoch(epoch_id)
     
     ###################### 一个epoch的测试 ######################
@@ -96,6 +104,8 @@ class BaseTrainer(ITrainer):
             self.model.test_batch(epoch_id, batch_id, batch_data)
             self.model.after_test_batch(epoch_id, batch_id, batch_data)
             self.pbar.update()
+            if self.fast_test:
+                break
         self.model.after_test_epoch(epoch_id)
 
     ###################### 一个epoch的结算 ######################
