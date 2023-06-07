@@ -126,7 +126,8 @@ class BaseModel(IModel):
             self.log_epoch_metrics('Valid Loss', loss.item())
 
     def test_batch(self, epoch_id, batch_id, batch_data):
-        error_list = self.test_step(epoch_id, batch_id, batch_data)
+        with torch.no_grad():
+            error_list = self.test_step(epoch_id, batch_id, batch_data)
         if error_list is not None:
             # assert(isinstance(error_list, np.array))
             test_error_list = error_list[:, 0] if len(error_list.shape)>1 else error_list
