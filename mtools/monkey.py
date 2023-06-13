@@ -215,7 +215,15 @@ def batch_to_device(batch_data, device=None):
     else:
         return tuple(batch_to_device(item) for item in batch_data)
     # return (lambda device=device, batch_data=batch_data: [k.to(device) for k in batch_data])()
-    
+
+def plt_addnote(ax, note):
+    if note:
+        t = ax.text(0.05, 0.95, 
+        note, 
+        transform=ax.transAxes, va='top', color='black')
+        t.set_bbox(dict(facecolor='#DCDCDC', alpha=0.5, linewidth=0))
+
+
 # if __name__ == "__main__":
 #     magic_append([0,2,4,5,6], "UnitTest")
 #     magic_append([1,3,4,5,7], "UnitTest")

@@ -155,7 +155,7 @@ class OutputManger(object):
         model_name = self.model_name if model_name is None else model_name
         filename = '%s_%s.%s' % (model_name, postfix, file_extension)
         output_path = os.path.join(output_root, self.output, out_dir)
-        return os.path.join(check_dir(output_path), filename)
+        return os.path.join(check_dir(output_path, is_print=False), filename)
 
 def get_exp_no(data_postfix, e):
     return 'e' + str(e) if data_postfix is None else data_postfix + 'e' + str(e)
@@ -305,7 +305,7 @@ def merge_params(params, _params):
 
 def set_weight_file(model):
     model.weights_file = os.path.join('tmp', 'weights%d.pth' % (os.getpid()))
-    check_dir('tmp')
+    check_dir('tmp', is_print=False)
 
 def print_batch(e, epochs, b, batch_size, num_data, losses):
     ratio = 100.0 * ((b+1) * batch_size) / num_data
@@ -420,7 +420,7 @@ def curve_plot(outM, curve_name, history, reporters=None, ylim=None, fontsize=15
 def save_evaluate(output=None, name=None, head=None, varList=None, filename=None):
     # save evaluate result
     if filename is None:
-        filename = os.path.join(check_dir(os.path.join('output', output)), name+'_evaluate.csv')
+        filename = os.path.join(check_dir(os.path.join('output', output), is_print=False), name+'_evaluate.csv')
     if not(os.path.exists(filename)):
         eval_file=open(filename, 'w')
         eval_file.write(head)
@@ -430,6 +430,7 @@ def save_evaluate(output=None, name=None, head=None, varList=None, filename=None
     txt=','.join(list(map(lambda x:str(x),varList)))
     eval_file.writelines(txt+'\n')
     eval_file.close()
+    print(filename)
     print(head+txt)
 
 def save_t_SNE(filename, Xs, labels, n_components=2, fontsize=15, color='base', legend=True, markersize=12):

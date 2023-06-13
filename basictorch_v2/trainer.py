@@ -52,12 +52,9 @@ class Trainer(Base):
         self.is_save_end = is_save_end
         self.postfix = postfix
         self.eval_train = eval_train
+        self.monitor_losses = {}
         t.set_params(self, kwargs)
-        if self.epochs>0:
-            self.epoch_loop()
-        else:
-            self.val_epoch = 0
-            self.fit_time = 0
+        self.epoch_loop()
     
     def epoch_loop(self):
         self.on_train_begin()
@@ -232,7 +229,7 @@ class Trainer(Base):
 
     def save_evaluate(self, postfix='', head=None, varList=None, monitor_losses=None):
         if head is None:
-            if self.validation:
+            if hasattr(self, 'validation') and self.validation:
                 if monitor_losses is None:
                     monitor_losses = self.monitor_losses
                 head = 'data_ver,data_name,exp_no,epochs,batch_size,%s,%s,fit_time,val_epoch\n' % (self.monitor, 'test_%s'%self.test_monitor)
@@ -244,4 +241,4 @@ class Trainer(Base):
         if hasattr(self.args, 'run_i'):
             head = 'run_i,'+head
             varList.insert(0, self.args.run_i)
-        t.save_evaluate(self.outM.output, '%s%s'%(self.name, postfix), head, varList)
+        t.save_evaluate(self.outM.output, '%s%s'%(self.name, postfix if len(postfix) else self.postfix), head, varList)

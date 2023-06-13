@@ -18,7 +18,7 @@ class BDatasets(ABC):
         self.print_shape()
         self.ds_dict = {'train':self.train_dataset, 'test':self.test_dataset, 'val':self.val_dataset}
 
-    def get_data_loader(self, ds_name, batch_size=None):
+    def get_data_loader(self, ds_name, batch_size=None, **kwargs):
         if ds_name == 'train':
             batch_size = batch_size if batch_size else self.batch_size
             shuffle = self.is_shuffle
@@ -27,7 +27,7 @@ class BDatasets(ABC):
             shuffle = False
         ds = self.ds_dict[ds_name]
         if hasattr(ds, 'get_data_loader'):
-            return ds.get_data_loader(batch_size, shuffle)
+            return ds.get_data_loader(batch_size, shuffle, **kwargs)
         else:
             return DataLoader(ds, batch_size, shuffle=shuffle)
 

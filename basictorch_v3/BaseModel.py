@@ -30,10 +30,8 @@ from .IModel import IModel
 from mtools import monkey as mk
 from functools import reduce
 from basictorch_v3.Logger import Logger
-try:
-    from lightning.fabric.loggers import TensorBoardLogger
-except:
-    from lightning_fabric.loggers import TensorBoardLogger
+from lightning.fabric.loggers import TensorBoardLogger
+
 import shutil
 
 class BaseModel(IModel):
@@ -338,7 +336,7 @@ class BaseModel(IModel):
             self.logger.log(metrics_group, metrics_groups[metrics_group], epoch_id)
     
     def print_epoch_metrics(self, epoch_id):
-        for name in self.history_metrics_dict.keys():
+        for name in sorted(self.history_metrics_dict.keys()):
             if self.history_metrics_dict[name]['epoch_id'][-1]==epoch_id:
                 log.info(f"{name}: {self.history_metrics_dict[name]['values'][-1]:.6f}")
 

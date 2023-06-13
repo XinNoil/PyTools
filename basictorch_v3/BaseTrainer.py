@@ -64,6 +64,7 @@ class BaseTrainer(ITrainer):
 
     ###################### 一个epoch的训练 ######################
     def train_epoch(self, epoch_id):
+        mk.b_set('trainer_mode', 'train')
         self.model.train_mode()
         self.model.before_train_epoch(epoch_id)
         for batch_id, batch_data in enumerate(self.train_loader):
@@ -77,9 +78,11 @@ class BaseTrainer(ITrainer):
             if self.fast_train:
                 break
         self.model.after_train_epoch(epoch_id)
+        mk.b_set('trainer_mode', None)
 
     ###################### 一个epoch的验证 ######################
     def valid_epoch(self, epoch_id):
+        mk.b_set('trainer_mode', 'valid')
         self.model.valid_mode()
         self.model.before_valid_epoch(epoch_id)
         for batch_id, batch_data in enumerate(self.valid_loader):
@@ -92,9 +95,11 @@ class BaseTrainer(ITrainer):
             if self.fast_train:
                 break
         self.model.after_valid_epoch(epoch_id)
+        mk.b_set('trainer_mode', None)
     
     ###################### 一个epoch的测试 ######################
     def test_epoch(self, epoch_id):
+        mk.b_set('trainer_mode', 'test')
         self.model.valid_mode()
         self.model.before_test_epoch(epoch_id)
         for batch_id, batch_data in enumerate(self.test_loader):
@@ -107,6 +112,7 @@ class BaseTrainer(ITrainer):
             if self.fast_test:
                 break
         self.model.after_test_epoch(epoch_id)
+        mk.b_set('trainer_mode', None)
 
     ###################### 一个epoch的结算 ######################
     def after_epoch(self, epoch_id):
