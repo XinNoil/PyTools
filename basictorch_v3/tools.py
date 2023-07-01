@@ -26,3 +26,6 @@ def data_to_device(batch_data, device=None):
         return batch_data.to(device)
     else:
         return tuple(data_to_device(item, device) for item in batch_data)
+
+def count_parameters(net):
+    return sum(p.numel() for p in net.parameters() if p.requires_grad)
