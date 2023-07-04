@@ -96,6 +96,7 @@ def load_h5(filename):
             __dict__[k] = v.decode()
         elif type(v)==np.ndarray and v.dtype.char=='S':
             __dict__[k] = np2str(v)
+    f.close()
     return __dict__
 
 def csvread(filename,delimiter=',',**kwargs):

@@ -54,3 +54,6 @@ class Obj(object):
 
 def dictConfig_to_dict(cfg):
     return Obj(dict(zip(cfg.keys(), cfg.values())))
+
+def count_parameters(net):
+    return sum(p.numel() for p in net.parameters() if p.requires_grad)
