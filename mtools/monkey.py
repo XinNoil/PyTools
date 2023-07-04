@@ -19,9 +19,9 @@ def b_set(name, value):
     blackboard[name] = value
     return
 
-def b_get(name):
+def b_get(name, _default=None):
     global blackboard
-    return blackboard.get(name, None)
+    return blackboard.get(name, _default)
 
 class MagicHolder():
     def __init__(self):

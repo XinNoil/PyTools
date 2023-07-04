@@ -145,3 +145,8 @@ def print_mat_eq(name,val):
 def print_each(str_list):
     for _ in str_list:
         print(_)
+
+def print_cfg_params(obj, cfg, log):
+    for key in cfg.keys():
+        if key in obj.__dict__:
+            log.info(f"self.{key}={obj.__dict__[key]}")
