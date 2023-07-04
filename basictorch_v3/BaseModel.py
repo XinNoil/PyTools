@@ -30,7 +30,10 @@ from .IModel import IModel
 from mtools import monkey as mk
 from functools import reduce
 from basictorch_v3.Logger import Logger
-from lightning.fabric.loggers import TensorBoardLogger
+try:
+    from lightning.fabric.loggers import TensorBoardLogger
+except:
+    from lightning_fabric.loggers import TensorBoardLogger
 
 import shutil
 
