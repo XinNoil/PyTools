@@ -96,7 +96,7 @@ class BaseModel(IModel):
             cur_model_out_subpath = f"epoch_num<{((epoch_id//self.epoch_stages_interval)+1)*self.epoch_stages_interval}"
 
             if self.model_out_subpath != cur_model_out_subpath:
-                shutil.copytree(f"model/{self.model_out_subpath}", f"model/{cur_model_out_subpath}")
+                shutil.copytree(f"model/{self.model_out_subpath}", f"model/{cur_model_out_subpath}", dirs_exist_ok=True)
                 self.model_out_subpath = cur_model_out_subpath
             else:
                 os.makedirs(f"model/{cur_model_out_subpath}", exist_ok=True)
