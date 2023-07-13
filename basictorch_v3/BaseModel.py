@@ -66,6 +66,13 @@ class BaseModel(IModel):
         self.make_necessary_dirs()
         self.save_on_metrics(save_on_metrics_name)
         self.evaluate_on_metrics(evaluate_on_metrics_names)
+    
+    @property
+    def device(self):
+        if hasattr(self, 'trainer'):
+            return self.trainer.device
+        else:
+            return mk.get_current_device()
 
     def make_necessary_dirs(self):
         os.makedirs("model", exist_ok=True)
