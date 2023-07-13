@@ -5,7 +5,7 @@ import sys
 
 import ipdb as pdb
 import logging
-log = logging.getLogger(__name__)
+log = logging.getLogger('BaseModel')
 
 import numpy as np
 np.set_printoptions(precision=4, suppress=True, formatter={'float_kind':'{:f}'.format})
@@ -347,9 +347,10 @@ class BaseModel(IModel):
             self.logger.log(metrics_group, metrics_groups[metrics_group], epoch_id)
     
     def print_epoch_metrics(self, epoch_id):
+        max_name_len = np.max([len(_) for _ in self.history_metrics_dict.keys()])
         for name in sorted(self.history_metrics_dict.keys()):
             if self.history_metrics_dict[name]['epoch_id'][-1]==epoch_id:
-                log.info(f"{name}: {self.history_metrics_dict[name]['values'][-1]:.6f}")
+                log.info('%-*s : %.6f'%(int(max_name_len), name, self.history_metrics_dict[name]['values'][-1]))
 
     def update_scheduler(self, epoch_id, monitor="Valid Loss"):
         # Scheduler 更新

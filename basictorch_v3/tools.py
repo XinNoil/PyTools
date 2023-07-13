@@ -1,6 +1,7 @@
 import torch
 import mtools.monkey as mk
 from torch.utils.data import DataLoader, Dataset
+from hydra.core.hydra_config import HydraConfig
 
 def item_losses(losses):
     for loss in losses:
@@ -57,3 +58,7 @@ def dictConfig_to_dict(cfg):
 
 def count_parameters(net):
     return sum(p.numel() for p in net.parameters() if p.requires_grad)
+
+def hydra_log_info(log):
+    log.info(f"Job {HydraConfig.get().job.num} Override Params: {HydraConfig.get().overrides.task}")
+    log.info(f"Output Dir: {HydraConfig.get().runtime.output_dir}")
