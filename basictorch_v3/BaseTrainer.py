@@ -4,7 +4,6 @@ from mtools import monkey as mk
 from .ITrainer import ITrainer
 from .IDataset import IDataset
 from .IModel import IModel
-from .tools import hydra_log_info
 from torch.utils.data import random_split, DataLoader
 import numpy as np
 np.set_printoptions(precision=5, suppress=True, formatter={'float_kind': '{:f}'.format})
@@ -119,7 +118,6 @@ class BaseTrainer(ITrainer):
     def after_epoch(self, epoch_id):
         self.pbar.close()
         self.model.after_epoch(epoch_id)
-        hydra_log_info(log)
 
     ###################### 训练被打断 ######################
     def on_train_interrupted(self):
