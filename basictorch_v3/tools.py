@@ -60,5 +60,5 @@ def count_parameters(net):
     return sum(p.numel() for p in net.parameters() if p.requires_grad)
 
 def hydra_log_info(log):
-    log.info(f"Job {HydraConfig.get().job.num} Override Params: {HydraConfig.get().overrides.task}")
+    log.info(f"Override Params: {HydraConfig.get().overrides.task}")
     log.info(f"Output Dir: {HydraConfig.get().runtime.output_dir}")
