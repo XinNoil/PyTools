@@ -350,7 +350,7 @@ class BaseModel(IModel):
         max_name_len = np.max([len(_) for _ in self.history_metrics_dict.keys()])
         for name in sorted(self.history_metrics_dict.keys()):
             if self.history_metrics_dict[name]['epoch_id'][-1]==epoch_id:
-                log.info('%-*s : %.6f'%(int(max_name_len), name, self.history_metrics_dict[name]['values'][-1]))
+                log.info('%*s : %.6f'%(int(max_name_len), name, self.history_metrics_dict[name]['values'][-1]))
 
     def update_scheduler(self, epoch_id, monitor="Valid Loss"):
         # Scheduler 更新
