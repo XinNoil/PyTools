@@ -12,6 +12,8 @@ import torch
 import logging
 import ipdb as pdb
 
+# from tqdm.auto import trange
+# from tqdm.auto import tqdm as tqdm_auto
 from tqdm import tqdm
 
 log = logging.getLogger('BaseTrainer')
@@ -30,7 +32,9 @@ class BaseTrainer(ITrainer):
 
         self.fast_train = cfg.get('fast_train', False)
         self.fast_test = cfg.get('fast_test', False)
-        self.process_bar = cfg.get('process_bar', True)
+        self.process_bar = cfg.get('process_bar', 'batch')
+        self.task_i = cfg.get('task_i', 0)
+        self.task_p = cfg.get('task_p', 0)
 
         if cfg.device=='auto':
             self.device = mk.get_current_device()
@@ -54,6 +58,9 @@ class BaseTrainer(ITrainer):
         log.info('#' * 60)
         log.info('#' * 60)
         log.info('Start Training')
+        if self.process_bar=='epoch':
+            self.pbar = tqdm(total=self.epoch_num, desc=f"Run {self.task_i} on {self.device}", position=self.task_p, leave=False)
+
 
     ###################### 一个epoch的开始 ######################
     def before_epoch(self, epoch_id):
@@ -61,8 +68,8 @@ class BaseTrainer(ITrainer):
         log.info(f"Epoch: {epoch_id} / {self.epoch_num}")
         self.model.before_epoch(epoch_id)
         # 进度条
-        if self.process_bar:
-            self.pbar = tqdm(total=len(self.train_loader)+len(self.valid_loader)+len(self.test_loader), desc=f"Epoch {epoch_id}")        
+        if self.process_bar=='batch':
+            self.pbar = tqdm(total=len(self.train_loader)+len(self.valid_loader)+len(self.test_loader), desc=f"Epoch {epoch_id}")
 
     ###################### 一个epoch的训练 ######################
     def train_epoch(self, epoch_id):
@@ -75,7 +82,7 @@ class BaseTrainer(ITrainer):
             self.model.before_train_batch(epoch_id, batch_id, batch_data)
             self.model.train_batch(epoch_id, batch_id, batch_data)
             self.model.after_train_batch(epoch_id, batch_id, batch_data)
-            if self.process_bar:
+            if self.process_bar=='batch':
                 self.pbar.update()
             self.step_count += 1
             if self.fast_train:
@@ -94,7 +101,7 @@ class BaseTrainer(ITrainer):
             self.model.before_valid_batch(epoch_id, batch_id, batch_data)
             self.model.valid_batch(epoch_id, batch_id, batch_data)
             self.model.after_valid_batch(epoch_id, batch_id, batch_data)
-            if self.process_bar:
+            if self.process_bar=='batch':
                 self.pbar.update()
             if self.fast_train:
                 break
@@ -112,7 +119,7 @@ class BaseTrainer(ITrainer):
             self.model.before_test_batch(epoch_id, batch_id, batch_data)
             self.model.test_batch(epoch_id, batch_id, batch_data)
             self.model.after_test_batch(epoch_id, batch_id, batch_data)
-            if self.process_bar:
+            if self.process_bar=='batch':
                 self.pbar.update()
             if self.fast_test:
                 break
@@ -121,19 +128,22 @@ class BaseTrainer(ITrainer):
 
     ###################### 一个epoch的结算 ######################
     def after_epoch(self, epoch_id):
-        if self.process_bar:
+        if self.process_bar=='batch':
             self.pbar.close()
+        elif self.process_bar=='epoch':
+            self.pbar.update()
         self.model.after_epoch(epoch_id)
 
     ###################### 训练被打断 ######################
     def on_train_interrupted(self):
-        self.pbar.close()
         log.info('#' * 60)
         log.info('Early terminate')
 
     ###################### 训练结束 ######################
     def after_train(self):
         self.model.after_train()
+        if hasattr(self, 'pbar'):
+            self.pbar.close()
         log.info('Training complete')
 
     ###################### 训练流程定义 ######################
@@ -141,12 +151,15 @@ class BaseTrainer(ITrainer):
         self.before_train()
         try:
             for epoch_id in range(self.epoch_num):
-                self.before_epoch(epoch_id)
-                self.train_epoch(epoch_id)
-                self.valid_epoch(epoch_id)
-                self.test_epoch(epoch_id)
-                self.after_epoch(epoch_id)
-                self.epoch_count += 1
+                self.epoch_step(epoch_id)
         except KeyboardInterrupt:
             self.on_train_interrupted()
         self.after_train()
+    
+    def epoch_step(self, epoch_id):
+        self.before_epoch(epoch_id)
+        self.train_epoch(epoch_id)
+        self.valid_epoch(epoch_id)
+        self.test_epoch(epoch_id)
+        self.after_epoch(epoch_id)
+        self.epoch_count += 1
