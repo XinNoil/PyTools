@@ -30,6 +30,7 @@ class BaseTrainer(ITrainer):
 
         self.fast_train = cfg.get('fast_train', False)
         self.fast_test = cfg.get('fast_test', False)
+        self.process_bar = cfg.get('process_bar', True)
 
         if cfg.device=='auto':
             self.device = mk.get_current_device()
@@ -60,7 +61,8 @@ class BaseTrainer(ITrainer):
         log.info(f"Epoch: {epoch_id} / {self.epoch_num}")
         self.model.before_epoch(epoch_id)
         # 进度条
-        self.pbar = tqdm(total=len(self.train_loader)+len(self.valid_loader)+len(self.test_loader), desc=f"Epoch {epoch_id}")        
+        if self.process_bar:
+            self.pbar = tqdm(total=len(self.train_loader)+len(self.valid_loader)+len(self.test_loader), desc=f"Epoch {epoch_id}")        
 
     ###################### 一个epoch的训练 ######################
     def train_epoch(self, epoch_id):
@@ -73,7 +75,8 @@ class BaseTrainer(ITrainer):
             self.model.before_train_batch(epoch_id, batch_id, batch_data)
             self.model.train_batch(epoch_id, batch_id, batch_data)
             self.model.after_train_batch(epoch_id, batch_id, batch_data)
-            self.pbar.update()
+            if self.process_bar:
+                self.pbar.update()
             self.step_count += 1
             if self.fast_train:
                 break
@@ -91,7 +94,8 @@ class BaseTrainer(ITrainer):
             self.model.before_valid_batch(epoch_id, batch_id, batch_data)
             self.model.valid_batch(epoch_id, batch_id, batch_data)
             self.model.after_valid_batch(epoch_id, batch_id, batch_data)
-            self.pbar.update()
+            if self.process_bar:
+                self.pbar.update()
             if self.fast_train:
                 break
         self.model.after_valid_epoch(epoch_id)
@@ -108,7 +112,8 @@ class BaseTrainer(ITrainer):
             self.model.before_test_batch(epoch_id, batch_id, batch_data)
             self.model.test_batch(epoch_id, batch_id, batch_data)
             self.model.after_test_batch(epoch_id, batch_id, batch_data)
-            self.pbar.update()
+            if self.process_bar:
+                self.pbar.update()
             if self.fast_test:
                 break
         self.model.after_test_epoch(epoch_id)
@@ -116,7 +121,8 @@ class BaseTrainer(ITrainer):
 
     ###################### 一个epoch的结算 ######################
     def after_epoch(self, epoch_id):
-        self.pbar.close()
+        if self.process_bar:
+            self.pbar.close()
         self.model.after_epoch(epoch_id)
 
     ###################### 训练被打断 ######################
