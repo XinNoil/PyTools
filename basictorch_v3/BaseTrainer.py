@@ -59,8 +59,7 @@ class BaseTrainer(ITrainer):
         log.info('#' * 60)
         log.info('Start Training')
         if self.process_bar=='epoch':
-            self.pbar = tqdm(total=self.epoch_num, desc=f"Run {self.task_i} on {self.device}", position=self.task_p, leave=False)
-
+            self.pbar = tqdm(total=self.epoch_num, desc=f"Run {self.task_i}/{self.seed} on {self.device}", position=self.task_p, leave=False)
 
     ###################### 一个epoch的开始 ######################
     def before_epoch(self, epoch_id):

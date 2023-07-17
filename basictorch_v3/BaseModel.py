@@ -255,8 +255,6 @@ class BaseModel(IModel):
             'optimizer_state_dict': self.optimizer.state_dict(),
             'scheduler_state_dict': self.scheduler.state_dict(),
         }, save_path)
-    
-        log.info(f'Model saved to {save_path}')        
 
     def load(self, model_path, device=None, strict=True, load_opti=True):
         checkpoint = torch.load(model_path, map_location=mk.get_current_device() if device is None else device)
@@ -395,6 +393,7 @@ class BaseModel(IModel):
 
     # 一个epoch过后网络的保存
     def save_model_on_epoch_end(self, epoch_id):
+        save_names = []
         for metrics_name in self.history_metrics_dict.keys():
             if metrics_name in self.save_on_dict:
                 old_val = self.save_on_dict[metrics_name]['best_val']
@@ -403,9 +402,12 @@ class BaseModel(IModel):
                 if self.save_on_dict[metrics_name]['mode']=='min' and now_val < old_val:
                     self.save_on_dict[metrics_name]['best_val'] = now_val
                     self.save(save_name)
+                    save_names.append(save_name)
                 elif self.save_on_dict[metrics_name]['mode']=='max' and now_val > old_val:
                     self.save_on_dict[metrics_name]['best_val'] = now_val
                     self.save(save_name)
+                    save_names.append(save_name)
+        log.info(f'Model saved to {save_names}')
     
     def save_on_metrics(self, metrics_name, save_name=None, mode='min'):
         if isinstance(metrics_name, list):
