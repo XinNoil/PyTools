@@ -155,8 +155,11 @@ def get_pool_dev(args, try_num=0):
         dev = get_dev(args.dev_use_nums)
         if args.dev_use_nums[dev] == args.max_dev_num:
             if try_num<5:
-                sleep(0.1)
+                sleep(3)
                 return get_pool_dev(args, try_num+1)
+        elif args.dev_use_nums[dev] > args.max_dev_num:
+            sleep(3)
+            return get_pool_dev(args, try_num+0.1)
         args.dev_use_nums[dev] += 1
     else:
         dev = None
