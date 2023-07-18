@@ -101,7 +101,7 @@ def long_time_task(args, i, seed, cmd=None, pool=None, dev=None):
     cmd = cmd.replace('python ', 'python -W ignore ')
     cmd = cmd.replace('python3 ', 'python3 -W ignore ')
     if dev is not None:
-        param += ' Trainer.device=cuda:%d' % (dev)
+        param += ' Trainer.device=cuda:%d' % (args.dev[dev])
     
     if pool is not None:
         param += ' +Trainer.task_i=%s +Trainer.task_p=%d +Trainer.process_bar=epoch'%(prefix, pool)
@@ -124,10 +124,10 @@ def long_time_task(args, i, seed, cmd=None, pool=None, dev=None):
     if args.test==0 and pool is not None:
         try:
             now_time = time.strftime('%y/%m/%d-%H:%M:%S', time.localtime(time.time()))
-            print('\nRun %s on cuda:%d started at %s'%(prefix, dev, now_time))
+            print('\nRun %s on cuda:%d started at %s'%(prefix, args.dev[dev], now_time))
             status = os.system(cmd)
             now_time = time.strftime('%y/%m/%d-%H:%M:%S', time.localtime(time.time()))
-            print('\nRun %s on cuda:%d done at %s'%(prefix, dev, now_time))
+            print('\nRun %s on cuda:%d done at %s'%(prefix, args.dev[dev], now_time))
         except:
             print('\nRun %s Error'%prefix)
             status = 1
