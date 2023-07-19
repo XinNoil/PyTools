@@ -1,4 +1,6 @@
-import os, time, torch
+import os, sys, time, torch
+import contextlib
+from tqdm import tqdm
 import mtools.monkey as mk
 from mtools import read_file, write_file
 from torch.utils.data import DataLoader, Dataset
@@ -95,9 +97,14 @@ def list_index(a, v):
     for i,_ in enumerate(a):
         if _ == v:
             return i
+    return None
 
-def get_dev(dev_use_nums):
-    return list_index(dev_use_nums, min(dev_use_nums))
+def get_dev(max_use_nums, dev_use_nums):
+    if len(max_use_nums)>1:
+        left_use_nums = [_max-used for _max,used in zip(max_use_nums, dev_use_nums)]
+        return list_index(left_use_nums, max(left_use_nums))
+    else:
+        return list_index(dev_use_nums, min(dev_use_nums))
 
 def long_time_task(args, i, seed, cmd=None, pool=None, dev=None, print_lock=None):
     prefix = '%d/%d-%s/%d'%(i, args.cmd_num-1, args.seed.index(seed)+1 if seed in args.seed else 0, len(args.seed))
@@ -126,21 +133,25 @@ def long_time_task(args, i, seed, cmd=None, pool=None, dev=None, print_lock=None
     
     status = 0
     
-    if args.test==0 and pool is not None:
+    if pool is not None:
         try:
-            now_time = time.strftime('%y/%m/%d-%H:%M:%S', time.localtime(time.time()))
-            with print_lock:
-                print('Run %s on cuda:%d started at %s'%(prefix, args.dev[dev], now_time))
-            status = os.system(cmd)
-            now_time = time.strftime('%y/%m/%d-%H:%M:%S', time.localtime(time.time()))
-            with print_lock:
-                print('Run %s on cuda:%d done at %s'%(prefix, args.dev[dev], now_time))
+            if args.test==0:
+                status = os.system(cmd)
+            else:
+                now_time = time.strftime('%H:%M:%S', time.localtime(time.time()))
+                pbar = tqdm(total=10, desc=f"Run {prefix} on cuda:{args.dev[dev]} started at {now_time}", position=pool)
+                for _ in range(10):
+                    pbar.update()
+                    sleep(0.2)
+                now_time = time.strftime('%H:%M:%S', time.localtime(time.time()))
+                pbar.set_description(f"Run {prefix} on cuda:{args.dev[dev]} finished at {now_time}")
+                pbar.close()
         except:
             with print_lock:
-                print('Run %s Error'%prefix)
+                print('Run %s Error'%prefix, file=sys.stderr)
             status = 1
     else:
-        print('Run %s: %s' % (prefix, cmd[:100]))
+        print('Run %s: %s...' % (prefix, cmd[:120]), file=sys.stderr)
     return i, seed, _cmd, pool, dev, status
 
 def get_cmds_list(args, cmds):
@@ -153,17 +164,37 @@ def get_cmds_list(args, cmds):
 
 def run_loop(p, args, cmds_list, var_lock, print_lock, pool_use_nums, dev_use_nums, callback):
     for i, seed, cmd in cmds_list:
-        with var_lock:
-            pool, dev = get_pool_dev(args, pool_use_nums, dev_use_nums)
+        pool, dev = get_pool_dev(args, pool_use_nums, dev_use_nums, var_lock)
         p.apply_async(long_time_task, args=(args, i, seed, cmd, pool, dev, print_lock), callback=callback)
         
-def get_pool_dev(args, pool_use_nums, dev_use_nums):
-    pool = list_index(pool_use_nums, min(pool_use_nums))
-        
-    pool_use_nums[pool] += 1
-    if args.dev[0] != -1:
-        dev = get_dev(dev_use_nums)
-        dev_use_nums[dev] += 1
-    else:
-        dev = None
+def get_pool_dev(args, pool_use_nums, dev_use_nums, var_lock):
+    while True:
+        with var_lock:
+            pool = list_index(pool_use_nums, 0)
+            if pool is not None:
+                pool_use_nums[pool] = 1
+                if args.dev[0] != -1:
+                    dev = get_dev(args.num, dev_use_nums)
+                    dev_use_nums[dev] += 1
+                else:
+                    dev = None
+                break
+        sleep(1)
     return pool, dev
+
+class DummyFile(object):
+  file = None
+  def __init__(self, file):
+    self.file = file
+
+  def write(self, x):
+    # Avoid print() second call (useless \n)
+    if len(x.rstrip()) > 0:
+        tqdm.write(x, file=self.file)
+
+@contextlib.contextmanager
+def nostderr():
+    save_stderr = sys.stderr
+    sys.stderr = DummyFile(sys.stderr)
+    yield
+    sys.stderr = save_stderr

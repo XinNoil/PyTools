@@ -53,7 +53,8 @@ if args.pivot_table is not None:
     df = pd.pivot_table(df, values=args.pivot_table[0], index=columns, columns=args.pivot_table[1])
 df = df.sort_values(by=columns)
 df.reset_index(inplace=True)
-df.drop(columns='index', inplace=True)
+if 'index' in df.columns.to_list():
+    df.drop(columns='index', inplace=True)
 if args.order is not None:
     if 'tmp_order' in df.columns:
         df.drop(columns='tmp_order', inplace=True)

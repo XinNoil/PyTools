@@ -1,5 +1,5 @@
 # -*- coding: UTF-8 -*-
-import os, sys
+import os, sys, time
 from mtools import monkey as mk
 from .ITrainer import ITrainer
 from .IDataset import IDataset
@@ -59,7 +59,8 @@ class BaseTrainer(ITrainer):
         log.info('#' * 60)
         log.info('Start Training')
         if self.process_bar=='epoch':
-            self.pbar = tqdm(total=self.epoch_num, desc=f"Run {self.task_i} on {self.device}", position=self.task_p, leave=False)
+            now_time = time.strftime('%H:%M:%S', time.localtime(time.time()))
+            self.pbar = tqdm(total=self.epoch_num, desc=f"Run {self.task_i} on {self.device} started at {now_time}", position=self.task_p, leave=True)
 
     ###################### 一个epoch的开始 ######################
     def before_epoch(self, epoch_id):
@@ -142,6 +143,9 @@ class BaseTrainer(ITrainer):
     def after_train(self):
         self.model.after_train()
         if hasattr(self, 'pbar'):
+            if self.process_bar == 'epoch':
+                now_time = time.strftime('%H:%M:%S', time.localtime(time.time()))
+                self.pbar.set_description(f"Run {self.task_i} on {self.device} finished at {now_time}")
             self.pbar.close()
         log.info('Training complete')
 
