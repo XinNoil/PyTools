@@ -91,10 +91,15 @@ def load_cmds(filename):
     cmds = join_cmds(cmds)
     return cmds
 
-def get_dev(dev_use_nums):
-    return dev_use_nums.index(min(dev_use_nums))
+def list_index(a, v):
+    for i,_ in enumerate(a):
+        if _ == v:
+            return i
 
-def long_time_task(args, i, seed, cmd=None, pool=None, dev=None):
+def get_dev(dev_use_nums):
+    return list_index(dev_use_nums, min(dev_use_nums))
+
+def long_time_task(args, i, seed, cmd=None, pool=None, dev=None, print_lock=None):
     prefix = '%d/%d-%s/%d'%(i, args.cmd_num-1, args.seed.index(seed)+1 if seed in args.seed else 0, len(args.seed))
     _cmd = cmd
     param = ''
@@ -124,15 +129,18 @@ def long_time_task(args, i, seed, cmd=None, pool=None, dev=None):
     if args.test==0 and pool is not None:
         try:
             now_time = time.strftime('%y/%m/%d-%H:%M:%S', time.localtime(time.time()))
-            print('\nRun %s on cuda:%d started at %s'%(prefix, args.dev[dev], now_time))
+            with print_lock:
+                print('Run %s on cuda:%d started at %s'%(prefix, args.dev[dev], now_time))
             status = os.system(cmd)
             now_time = time.strftime('%y/%m/%d-%H:%M:%S', time.localtime(time.time()))
-            print('\nRun %s on cuda:%d done at %s'%(prefix, args.dev[dev], now_time))
+            with print_lock:
+                print('Run %s on cuda:%d done at %s'%(prefix, args.dev[dev], now_time))
         except:
-            print('\nRun %s Error'%prefix)
+            with print_lock:
+                print('Run %s Error'%prefix)
             status = 1
     else:
-        print('\nRun %s: %s' % (prefix, cmd[:100]))
+        print('Run %s: %s' % (prefix, cmd[:100]))
     return i, seed, _cmd, pool, dev, status
 
 def get_cmds_list(args, cmds):
@@ -143,25 +151,19 @@ def get_cmds_list(args, cmds):
             cmds_list.append((i, seed, cmd))
     return cmds_list
 
-def run_loop(p, args, cmds_list, callback):
+def run_loop(p, args, cmds_list, var_lock, print_lock, pool_use_nums, dev_use_nums, callback):
     for i, seed, cmd in cmds_list:
-        pool, dev = get_pool_dev(args)
-        p.apply_async(long_time_task, args=(args, i, seed, cmd, pool, dev), callback=callback)
-    
-def get_pool_dev(args, try_num=0):
-    pool = args.pool_use_nums.index(min(args.pool_use_nums))
-    args.pool_use_nums[pool] += 1
+        with var_lock:
+            pool, dev = get_pool_dev(args, pool_use_nums, dev_use_nums)
+        p.apply_async(long_time_task, args=(args, i, seed, cmd, pool, dev, print_lock), callback=callback)
+        
+def get_pool_dev(args, pool_use_nums, dev_use_nums):
+    pool = list_index(pool_use_nums, min(pool_use_nums))
+        
+    pool_use_nums[pool] += 1
     if args.dev[0] != -1:
-        dev = get_dev(args.dev_use_nums)
-        if args.dev_use_nums[dev] == args.max_dev_num:
-            if try_num<5:
-                sleep(3)
-                return get_pool_dev(args, try_num+1)
-        elif args.dev_use_nums[dev] > args.max_dev_num:
-            sleep(3)
-            return get_pool_dev(args, try_num+0.1)
-        args.dev_use_nums[dev] += 1
+        dev = get_dev(dev_use_nums)
+        dev_use_nums[dev] += 1
     else:
         dev = None
     return pool, dev
-
