@@ -137,7 +137,7 @@ def long_time_task(args, i, seed, cmd=None, pool=None, dev=None):
                 status = os.system(cmd)
             else:
                 now_time = time.strftime('%H:%M:%S', time.localtime(time.time()))
-                pbar = tqdm(total=10, desc=f"Run {prefix} on cuda:{args.dev[dev]} started at {now_time}", position=pool)
+                pbar = tqdm(total=10, desc=f"Run {prefix} on cuda:{args.dev[dev]} started at {now_time}", position=pool, leave=False)
                 for _ in range(10):
                     pbar.update()
                     sleep(0.2)

@@ -78,7 +78,7 @@ class BaseTrainer(ITrainer):
         self.model.before_train_epoch(epoch_id)
         for batch_id, batch_data in enumerate(self.train_loader):
             # 在一个batch上训练数据
-            batch_data = (lambda device=self.device, batch_data=batch_data: [k.to(device) for k in batch_data])()
+            batch_data = (lambda device=self.device, batch_data=batch_data: [k.to(device) if torch.is_tensor(k) else k for k in batch_data])()
             self.model.before_train_batch(epoch_id, batch_id, batch_data)
             self.model.train_batch(epoch_id, batch_id, batch_data)
             self.model.after_train_batch(epoch_id, batch_id, batch_data)
@@ -97,7 +97,7 @@ class BaseTrainer(ITrainer):
         self.model.before_valid_epoch(epoch_id)
         for batch_id, batch_data in enumerate(self.valid_loader):
             # 在一个batch上验证数据
-            batch_data = (lambda device=self.device, batch_data=batch_data: [k.to(device) for k in batch_data])()
+            batch_data = (lambda device=self.device, batch_data=batch_data: [k.to(device) if torch.is_tensor(k) else k for k in batch_data])()
             self.model.before_valid_batch(epoch_id, batch_id, batch_data)
             self.model.valid_batch(epoch_id, batch_id, batch_data)
             self.model.after_valid_batch(epoch_id, batch_id, batch_data)
@@ -115,7 +115,7 @@ class BaseTrainer(ITrainer):
         self.model.before_test_epoch(epoch_id)
         for batch_id, batch_data in enumerate(self.test_loader):
             # 在一个batch上测试数据
-            batch_data = (lambda device=self.device, batch_data=batch_data: [k.to(device) for k in batch_data])()
+            batch_data = (lambda device=self.device, batch_data=batch_data: [k.to(device) if torch.is_tensor(k) else k for k in batch_data])()
             self.model.before_test_batch(epoch_id, batch_id, batch_data)
             self.model.test_batch(epoch_id, batch_id, batch_data)
             self.model.after_test_batch(epoch_id, batch_id, batch_data)
