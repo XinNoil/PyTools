@@ -138,6 +138,8 @@ class BaseTrainer(ITrainer):
     def on_train_interrupted(self):
         log.info('#' * 60)
         log.info('Early terminate')
+        if self.process_bar == 'epoch':
+            sys.exit(-1)
 
     ###################### 训练结束 ######################
     def after_train(self):

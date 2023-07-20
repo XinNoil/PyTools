@@ -1,4 +1,4 @@
-import os, sys, time, torch
+import os, time, torch
 from tqdm import tqdm
 import mtools.monkey as mk
 from mtools import read_file
@@ -105,35 +105,34 @@ def get_dev(max_use_nums, dev_use_nums):
     else:
         return list_index(dev_use_nums, min(dev_use_nums))
 
-def long_time_task(args, i, seed, cmd=None, pool=None, dev=None, print_lock=None):
-    prefix = '%d/%d-%s/%d'%(i, args.cmd_num-1, args.seed.index(seed)+1 if seed in args.seed else 0, len(args.seed))
-    _cmd = cmd
-    param = ''
-    cmd = cmd.replace('python ', 'python -W ignore ')
-    cmd = cmd.replace('python3 ', 'python3 -W ignore ')
-    if dev is not None:
-        param += ' Trainer.device=cuda:%d' % (args.dev[dev])
-    
-    if pool is not None:
-        param += ' +Trainer.task_i=%s +Trainer.task_p=%d +Trainer.process_bar=epoch'%(prefix, pool)
-    if args.append is not None:
-        param += ' %s'%args.append
-    
-    if seed is not None:
-        param += ' seed=%d'%seed
-    if args.log and pool is not None:
-        param += ' > %s_%s.log'%(os.path.join(args.path.replace('.sh',''), 'run%d'%(i)), args.timestamp)
-        if seed is not None:
-            param = param.replace('.log', '_seed%d.log'%(seed))
-    if '#' in cmd:
-        cmd = cmd.replace('#', ' %s #'%param, 1)
-    else:
-        cmd += param
-    
+def long_time_task(args, i, seed, cmd=None, pool=None, dev=None):
     status = 0
-    
-    if pool is not None:
-        try:
+    try:
+        prefix = '%d/%d-%s/%d'%(i, args.cmd_num-1, args.seed.index(seed)+1 if seed in args.seed else 0, len(args.seed))
+        _cmd = cmd
+        param = ''
+        cmd = cmd.replace('python ', 'python -W ignore ')
+        cmd = cmd.replace('python3 ', 'python3 -W ignore ')
+        if dev is not None:
+            param += ' Trainer.device=cuda:%d' % (args.dev[dev])
+        
+        if pool is not None:
+            param += ' +Trainer.task_i=%s +Trainer.task_p=%d +Trainer.process_bar=epoch'%(prefix, pool)
+        if args.append is not None:
+            param += ' %s'%args.append
+        
+        if seed is not None:
+            param += ' seed=%d'%seed
+        if args.log and pool is not None:
+            param += ' > %s_%s.log'%(os.path.join(args.path.replace('.sh',''), 'run%d'%(i)), args.timestamp)
+            if seed is not None:
+                param = param.replace('.log', '_seed%d.log'%(seed))
+        if '#' in cmd:
+            cmd = cmd.replace('#', ' %s #'%param, 1)
+        else:
+            cmd += param
+        
+        if pool is not None:
             if args.test==0:
                 status = os.system(cmd)
             else:
@@ -145,12 +144,10 @@ def long_time_task(args, i, seed, cmd=None, pool=None, dev=None, print_lock=None
                 now_time = time.strftime('%H:%M:%S', time.localtime(time.time()))
                 pbar.set_description(f"Run {prefix} on cuda:{args.dev[dev]} finished at {now_time}")
                 pbar.close()
-        except:
-            with print_lock:
-                print('Run %s Error'%prefix, file=sys.stderr)
-            status = 1
-    else:
-        print('Run %s: %s...' % (prefix, cmd[:120]), file=sys.stderr)
+        else:
+            print('Run %s: %s...' % (prefix, cmd[:120]))
+    except:
+        status = 1
     return i, seed, _cmd, pool, dev, status
 
 def get_cmds_list(args, cmds):
@@ -161,10 +158,10 @@ def get_cmds_list(args, cmds):
             cmds_list.append((i, seed, cmd))
     return cmds_list
 
-def run_loop(p, args, cmds_list, var_lock, print_lock, pool_use_nums, dev_use_nums, callback):
+def run_loop(p, args, cmds_list, var_lock, pool_use_nums, dev_use_nums, callback):
     for i, seed, cmd in cmds_list:
         pool, dev = get_pool_dev(args, pool_use_nums, dev_use_nums, var_lock)
-        p.apply_async(long_time_task, args=(args, i, seed, cmd, pool, dev, print_lock), callback=callback)
+        p.apply_async(long_time_task, args=(args, i, seed, cmd, pool, dev), callback=callback)
         
 def get_pool_dev(args, pool_use_nums, dev_use_nums, var_lock):
     while True:
