@@ -1,8 +1,7 @@
 import os, sys, time, torch
-import contextlib
 from tqdm import tqdm
 import mtools.monkey as mk
-from mtools import read_file, write_file
+from mtools import read_file
 from torch.utils.data import DataLoader, Dataset
 from hydra.core.hydra_config import HydraConfig
 from time import sleep
@@ -181,20 +180,3 @@ def get_pool_dev(args, pool_use_nums, dev_use_nums, var_lock):
                 break
         sleep(1)
     return pool, dev
-
-class DummyFile(object):
-  file = None
-  def __init__(self, file):
-    self.file = file
-
-  def write(self, x):
-    # Avoid print() second call (useless \n)
-    if len(x.rstrip()) > 0:
-        tqdm.write(x, file=self.file)
-
-@contextlib.contextmanager
-def nostderr():
-    save_stderr = sys.stderr
-    sys.stderr = DummyFile(sys.stderr)
-    yield
-    sys.stderr = save_stderr
