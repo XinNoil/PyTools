@@ -18,6 +18,13 @@ from tqdm import tqdm
 
 log = logging.getLogger('BaseTrainer')
 
+def batch_to_device(batch_data, device, half=False):
+    if half:
+        batch_data = (lambda device=device, batch_data=batch_data: [k.half().to(device) if torch.is_tensor(k) else k for k in batch_data])()
+    else:
+        batch_data = (lambda device=device, batch_data=batch_data: [k.to(device) if torch.is_tensor(k) else k for k in batch_data])()
+    return batch_data
+
 class BaseTrainer(ITrainer):
     def __init__(self, cfg, model: IModel, train_loader: DataLoader, valid_loader: DataLoader, test_loader: DataLoader):
         super().__init__(cfg)
@@ -35,7 +42,11 @@ class BaseTrainer(ITrainer):
         self.process_bar = cfg.get('process_bar', 'batch')
         self.task_i = cfg.get('task_i', 0)
         self.task_p = cfg.get('task_p', 0)
-
+        self.is_half = cfg.get('half', False)
+        if self.is_half:
+            self.dtype = torch.float16
+        else:
+            self.dtype = torch.float32
         if cfg.device=='auto':
             self.device = mk.get_current_device()
         else:
@@ -53,6 +64,7 @@ class BaseTrainer(ITrainer):
         self.epoch_count = 0
         self.step_count = 0
         # 将模型传递至设备
+        self.model.set_device(self.dtype)
         self.model.set_device(self.device)
         self.model.before_train()
         log.info('#' * 60)
@@ -78,7 +90,7 @@ class BaseTrainer(ITrainer):
         self.model.before_train_epoch(epoch_id)
         for batch_id, batch_data in enumerate(self.train_loader):
             # 在一个batch上训练数据
-            batch_data = (lambda device=self.device, batch_data=batch_data: [k.to(device) if torch.is_tensor(k) else k for k in batch_data])()
+            batch_data = batch_to_device(batch_data, self.device, self.is_half)
             self.model.before_train_batch(epoch_id, batch_id, batch_data)
             self.model.train_batch(epoch_id, batch_id, batch_data)
             self.model.after_train_batch(epoch_id, batch_id, batch_data)
@@ -97,7 +109,7 @@ class BaseTrainer(ITrainer):
         self.model.before_valid_epoch(epoch_id)
         for batch_id, batch_data in enumerate(self.valid_loader):
             # 在一个batch上验证数据
-            batch_data = (lambda device=self.device, batch_data=batch_data: [k.to(device) if torch.is_tensor(k) else k for k in batch_data])()
+            batch_data = batch_to_device(batch_data, self.device, self.is_half)
             self.model.before_valid_batch(epoch_id, batch_id, batch_data)
             self.model.valid_batch(epoch_id, batch_id, batch_data)
             self.model.after_valid_batch(epoch_id, batch_id, batch_data)
@@ -115,7 +127,7 @@ class BaseTrainer(ITrainer):
         self.model.before_test_epoch(epoch_id)
         for batch_id, batch_data in enumerate(self.test_loader):
             # 在一个batch上测试数据
-            batch_data = (lambda device=self.device, batch_data=batch_data: [k.to(device) if torch.is_tensor(k) else k for k in batch_data])()
+            batch_data = batch_to_device(batch_data, self.device, self.is_half)
             self.model.before_test_batch(epoch_id, batch_id, batch_data)
             self.model.test_batch(epoch_id, batch_id, batch_data)
             self.model.after_test_batch(epoch_id, batch_id, batch_data)
