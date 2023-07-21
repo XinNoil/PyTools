@@ -90,8 +90,8 @@ class BaseModel(IModel):
         
         model_file = inspect.getsourcefile(type(self))
         net_file = inspect.getsourcefile(type(self.net))
-        shutil.copyfile(model_file, os.path.basename(model_file))
-        shutil.copyfile(net_file, os.path.basename(net_file))
+        shutil.copyfile(model_file, os.path.basename(model_file).replace('.py', '.backpy'))
+        shutil.copyfile(net_file, os.path.basename(net_file).replace('.py', '.backpy'))
 
     def set_device(self, device=None):
         self.net.to(mk.get_current_device() if device is None else device)
