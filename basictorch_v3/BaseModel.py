@@ -220,38 +220,39 @@ class BaseModel(IModel):
         log.info(f"Selecting Device: {device}")
 
         mk.write("Evaluation:")
-        if self.epoch_stages_interval<0:
-            for model_name in self.evaluate_list:
-                model_path = f"model/{model_name}.pt"
-                if os.path.exists(f"model/{model_name}.pt"):
-                    self.load(model_path, load_opti=False)
-                    self.set_device()
-                    self.valid_mode()
-                    out_dir = f"evaluation"
-                    rst_dict = self.evaluate_step(test_dataset, cfg, out_dir, model_name)
-                    mk.write(f"{model_name}:")
-                    for key, val in rst_dict.items():
-                        mk.write(f"    {key}: {val}")
-        else:
-            for sub_dir in sorted(os.listdir("model")):
-                if not os.path.isdir(f"model/{sub_dir}"):
-                    continue
-                sub_dir_writed = False
+        with torch.no_grad():
+            if self.epoch_stages_interval<0:
                 for model_name in self.evaluate_list:
-                    model_path = f"model/{sub_dir}/{model_name}.pt"
-                    if os.path.exists(model_path):
-                        if not sub_dir_writed:
-                            mk.write(f"{sub_dir}:")
-                            sub_dir_writed = True
+                    model_path = f"model/{model_name}.pt"
+                    if os.path.exists(f"model/{model_name}.pt"):
                         self.load(model_path, load_opti=False)
                         self.set_device()
                         self.valid_mode()
-                        out_dir = f"evaluation/{sub_dir}"
-                        os.makedirs(out_dir, exist_ok=True)
+                        out_dir = f"evaluation"
                         rst_dict = self.evaluate_step(test_dataset, cfg, out_dir, model_name)
-                        mk.write(f"    {model_name}:")
+                        mk.write(f"{model_name}:")
                         for key, val in rst_dict.items():
-                            mk.write(f"        {key}: {val}")
+                            mk.write(f"    {key}: {val}")
+            else:
+                for sub_dir in sorted(os.listdir("model")):
+                    if not os.path.isdir(f"model/{sub_dir}"):
+                        continue
+                    sub_dir_writed = False
+                    for model_name in self.evaluate_list:
+                        model_path = f"model/{sub_dir}/{model_name}.pt"
+                        if os.path.exists(model_path):
+                            if not sub_dir_writed:
+                                mk.write(f"{sub_dir}:")
+                                sub_dir_writed = True
+                            self.load(model_path, load_opti=False)
+                            self.set_device()
+                            self.valid_mode()
+                            out_dir = f"evaluation/{sub_dir}"
+                            os.makedirs(out_dir, exist_ok=True)
+                            rst_dict = self.evaluate_step(test_dataset, cfg, out_dir, model_name)
+                            mk.write(f"    {model_name}:")
+                            for key, val in rst_dict.items():
+                                mk.write(f"        {key}: {val}")
 
         mk.save("Evaluation.log")
         with open("Evaluation.log", 'r', encoding='utf-8') as f:
