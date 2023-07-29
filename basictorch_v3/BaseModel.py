@@ -2,6 +2,7 @@
 
 import os
 import sys
+import inspect, shutil
 
 import ipdb as pdb
 import logging
@@ -34,8 +35,6 @@ try:
     from lightning.fabric.loggers import TensorBoardLogger
 except:
     from lightning_fabric.loggers import TensorBoardLogger
-
-import shutil
 
 class BaseModel(IModel):
     def __init__(self, cfg, net, logger=None, save_on_metrics_name=["Valid Loss", "Test Error"], evaluate_on_metrics_names=["Valid Loss", "Test Error"], **kwargs):
@@ -73,6 +72,13 @@ class BaseModel(IModel):
             return self.trainer.device
         else:
             return mk.get_current_device()
+    
+    @property
+    def dtype(self):
+        if hasattr(self, 'trainer'):
+            return self.trainer.dtype
+        else:
+            return torch.float32
 
     def make_necessary_dirs(self):
         os.makedirs("model", exist_ok=True)
@@ -81,9 +87,17 @@ class BaseModel(IModel):
         if self.epoch_stages_interval>0:
             self.model_out_subpath = f"epoch_num<{self.epoch_stages_interval}"
             os.makedirs(f"model/{self.model_out_subpath}", exist_ok=True)
+        
+        model_file = inspect.getsourcefile(type(self))
+        net_file = inspect.getsourcefile(type(self.net))
+        shutil.copyfile(model_file, os.path.basename(model_file).replace('.py', '.backpy'))
+        shutil.copyfile(net_file, os.path.basename(net_file).replace('.py', '.backpy'))
 
     def set_device(self, device=None):
         self.net.to(mk.get_current_device() if device is None else device)
+    
+    def set_dtype(self, dtype):
+        self.net.to(dtype)
 
     def train_mode(self):
         self.net.train()
@@ -206,38 +220,39 @@ class BaseModel(IModel):
         log.info(f"Selecting Device: {device}")
 
         mk.write("Evaluation:")
-        if self.epoch_stages_interval<0:
-            for model_name in self.evaluate_list:
-                model_path = f"model/{model_name}.pt"
-                if os.path.exists(f"model/{model_name}.pt"):
-                    self.load(model_path, load_opti=False)
-                    self.set_device()
-                    self.valid_mode()
-                    out_dir = f"evaluation"
-                    rst_dict = self.evaluate_step(test_dataset, cfg, out_dir, model_name)
-                    mk.write(f"{model_name}:")
-                    for key, val in rst_dict.items():
-                        mk.write(f"    {key}: {val}")
-        else:
-            for sub_dir in sorted(os.listdir("model")):
-                if not os.path.isdir(f"model/{sub_dir}"):
-                    continue
-                sub_dir_writed = False
+        with torch.no_grad():
+            if self.epoch_stages_interval<0:
                 for model_name in self.evaluate_list:
-                    model_path = f"model/{sub_dir}/{model_name}.pt"
-                    if os.path.exists(model_path):
-                        if not sub_dir_writed:
-                            mk.write(f"{sub_dir}:")
-                            sub_dir_writed = True
+                    model_path = f"model/{model_name}.pt"
+                    if os.path.exists(f"model/{model_name}.pt"):
                         self.load(model_path, load_opti=False)
                         self.set_device()
                         self.valid_mode()
-                        out_dir = f"evaluation/{sub_dir}"
-                        os.makedirs(out_dir, exist_ok=True)
+                        out_dir = f"evaluation"
                         rst_dict = self.evaluate_step(test_dataset, cfg, out_dir, model_name)
-                        mk.write(f"    {model_name}:")
+                        mk.write(f"{model_name}:")
                         for key, val in rst_dict.items():
-                            mk.write(f"        {key}: {val}")
+                            mk.write(f"    {key}: {val}")
+            else:
+                for sub_dir in sorted(os.listdir("model")):
+                    if not os.path.isdir(f"model/{sub_dir}"):
+                        continue
+                    sub_dir_writed = False
+                    for model_name in self.evaluate_list:
+                        model_path = f"model/{sub_dir}/{model_name}.pt"
+                        if os.path.exists(model_path):
+                            if not sub_dir_writed:
+                                mk.write(f"{sub_dir}:")
+                                sub_dir_writed = True
+                            self.load(model_path, load_opti=False)
+                            self.set_device()
+                            self.valid_mode()
+                            out_dir = f"evaluation/{sub_dir}"
+                            os.makedirs(out_dir, exist_ok=True)
+                            rst_dict = self.evaluate_step(test_dataset, cfg, out_dir, model_name)
+                            mk.write(f"    {model_name}:")
+                            for key, val in rst_dict.items():
+                                mk.write(f"        {key}: {val}")
 
         mk.save("Evaluation.log")
         with open("Evaluation.log", 'r', encoding='utf-8') as f:

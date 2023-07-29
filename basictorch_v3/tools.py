@@ -1,10 +1,12 @@
 import os, time, torch
 from tqdm import tqdm
 import mtools.monkey as mk
-from mtools import read_file
+from mtools import read_file, save_json
 from torch.utils.data import DataLoader, Dataset
 from hydra.core.hydra_config import HydraConfig
 from time import sleep
+from git import Repo
+from mtools import get_repo_status
 
 def item_losses(losses):
     for loss in losses:
@@ -177,3 +179,18 @@ def get_pool_dev(args, pool_use_nums, dev_use_nums, var_lock):
                 break
         sleep(1)
     return pool, dev
+
+def get_repos(cfg):
+    repos = []
+    for name in cfg.keys():
+        repo = Repo(cfg[name])
+        repo.name = name
+        repos.append(repo)
+    return repos
+
+def get_git_info(cfg, filename=None):
+    repos = get_repos(cfg)
+    info_list = [{'name':repo.name ,'branch':repo.heads[0].name, 'commit':str(repo.heads[0].commit), 'status':get_repo_status(repo)} for repo in repos]
+    if filename is not None:
+        save_json(filename, info_list)
+    return info_list
