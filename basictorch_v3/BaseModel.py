@@ -143,9 +143,10 @@ class BaseModel(IModel):
         self.optimizer.step()
 
     def valid_batch(self, epoch_id, batch_id, batch_data):
-        loss = self.valid_step(epoch_id, batch_id, batch_data)
-        if loss is not None:
-            self.log_epoch_metrics('Valid Loss', loss.item())
+        with torch.no_grad():
+            loss = self.valid_step(epoch_id, batch_id, batch_data)
+            if loss is not None:
+                self.log_epoch_metrics('Valid Loss', loss.item())
 
     def test_batch(self, epoch_id, batch_id, batch_data):
         with torch.no_grad():
