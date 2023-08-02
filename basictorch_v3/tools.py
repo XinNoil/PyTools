@@ -121,7 +121,7 @@ def long_time_task(args, i, seed, cmd=None, pool=None, dev=None):
         if pool is not None:
             param += ' +Trainer.task_i=%s +Trainer.task_p=%d +Trainer.process_bar=epoch'%(prefix, pool)
         if args.append is not None:
-            param += ' %s'%args.append
+            param += ' %s'%(' '.join(args.append))
         
         if seed is not None:
             param += ' seed=%d'%seed
