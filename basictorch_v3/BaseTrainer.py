@@ -47,11 +47,7 @@ class BaseTrainer(ITrainer):
             self.dtype = torch.float16
         else:
             self.dtype = torch.float32
-        if cfg.device=='auto':
-            self.device = mk.get_current_device()
-        else:
-            self.device = torch.device(cfg.device if torch.cuda.is_available() else 'cpu')
-            mk.set_current_device(cfg.device)
+        self.device = mk.set_device(cfg.device)
         self.model.set_trainer(self)
         log.info(f"Training Device: {self.device}")
         log.info(f"Training Epochs: {self.epoch_num}")

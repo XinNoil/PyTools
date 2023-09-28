@@ -172,6 +172,18 @@ def get_current_device():
         set_current_device(device)
     return device
 
+def set_device(cfg_device):
+    if cfg_device=='auto':
+        device = get_current_device()
+    else:
+        if torch.cuda.is_available():
+            device = torch.device(cfg_device)
+            set_current_device(cfg_device)
+        else:
+            device = torch.device('cpu')
+            set_current_device('cpu')
+    return device
+
 def get_free_gpu():
     allowed_gpu = b_get('allowed_gpu')
 

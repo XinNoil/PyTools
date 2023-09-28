@@ -46,3 +46,10 @@ def plot_cdf(df, x=None, xlabel=None, xlim=None, ylim=None, ylabel="CDF",
              plot_params={}):
     return plot_fig(sns.displot, df, xlabel=xlabel, ylabel=ylabel, xlim=xlim, ylim=ylim, 
              fig_param=fig_param, plot_params={'kind':'ecdf', 'x':x, **plot_params})
+
+def set_box(axes, visible=True, edgecolor='k', alpha=1):
+    for ax in axes:
+        ax.spines['top'].set(   visible=visible, edgecolor=edgecolor, alpha=alpha)
+        ax.spines['right'].set( visible=visible, edgecolor=edgecolor, alpha=alpha)
+        ax.spines['left'].set(  visible=visible, edgecolor=edgecolor, alpha=alpha)
+        ax.spines['bottom'].set(visible=visible, edgecolor=edgecolor, alpha=alpha)
