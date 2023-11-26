@@ -221,12 +221,19 @@ class BaseModel(IModel):
         log.info(f"Selecting Device: {device}")
 
         mk.write("Evaluation:")
+        
+        if cfg.get('load_path', None) is None:
+            model_path = "model"
+        else:
+            model_path = os.path.join(cfg.Path.proj_dir, cfg.Path.output, cfg.get('load_path'), "model")
+        log.info(f"Loading from: {model_path}")
+
         with torch.no_grad():
             if self.epoch_stages_interval<0:
                 for model_name in self.evaluate_list:
-                    model_path = f"model/{model_name}.pt"
-                    if os.path.exists(f"model/{model_name}.pt"):
-                        self.load(model_path, load_opti=False)
+                    model_file = os.path.join(model_path, f"{model_name}.pt")
+                    if os.path.exists(model_file):
+                        self.load(model_file, load_opti=False)
                         self.set_device()
                         self.valid_mode()
                         out_dir = f"evaluation"
@@ -235,17 +242,18 @@ class BaseModel(IModel):
                         for key, val in rst_dict.items():
                             mk.write(f"    {key}: {val}")
             else:
-                for sub_dir in sorted(os.listdir("model")):
-                    if not os.path.isdir(f"model/{sub_dir}"):
+
+                for sub_dir in sorted(os.listdir(model_path)):
+                    if not os.path.isdir(f"{model_path}/{sub_dir}"):
                         continue
                     sub_dir_writed = False
                     for model_name in self.evaluate_list:
-                        model_path = f"model/{sub_dir}/{model_name}.pt"
-                        if os.path.exists(model_path):
+                        model_file = f"{model_path}/{sub_dir}/{model_name}.pt"
+                        if os.path.exists(model_file):
                             if not sub_dir_writed:
                                 mk.write(f"{sub_dir}:")
                                 sub_dir_writed = True
-                            self.load(model_path, load_opti=False)
+                            self.load(model_file, load_opti=False)
                             self.set_device()
                             self.valid_mode()
                             out_dir = f"evaluation/{sub_dir}"
