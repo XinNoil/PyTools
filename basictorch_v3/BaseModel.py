@@ -38,6 +38,7 @@ except:
 
 class BaseModel(IModel):
     def __init__(self, cfg, net, logger=None, save_on_metrics_name=["Valid Loss", "Test Error"], evaluate_on_metrics_names=["Valid Loss", "Test Error"], **kwargs):
+        self.cfg = cfg
         self.save_name = cfg.save_name
         self.epoch_stages_interval = getattr(cfg, 'epoch_stages_interval', -1)
         self.net = net
@@ -54,6 +55,7 @@ class BaseModel(IModel):
             log.info(f'Every {self.epoch_stages_interval} Epochs Change Model Output Dir')
         self.model_out_subpath = None
 
+        self.load_premodel(cfg)
         num_params = sum(p.numel() for p in self.net.parameters() if p.requires_grad)
         log.info(f'Total number of parameters: {num_params}')
 
@@ -79,6 +81,14 @@ class BaseModel(IModel):
             return self.trainer.dtype
         else:
             return torch.float32
+    
+    def load_premodel(self, cfg, device=None, strict=True, load_opti=False, net=None):
+        if cfg.get('load_pretrain_model', False):
+            if type(cfg.get('pre_model_path')) == str:
+                pre_model_path = cfg.pre_model_path
+            else:
+                pre_model_path = cfg.pre_model_path[cfg.pre_model_name]
+            self.load(pre_model_path, device=device, strict=strict, load_opti=load_opti, net=net)
 
     def make_necessary_dirs(self):
         os.makedirs("model", exist_ok=True)
@@ -280,9 +290,14 @@ class BaseModel(IModel):
             'scheduler_state_dict': self.scheduler.state_dict(),
         }, save_path)
 
-    def load(self, model_path, device=None, strict=True, load_opti=True):
+    def load(self, model_path, device=None, strict=True, load_opti=True, net=None):
+        net = self.net if net is None else net
+        log.info(f'load model from: {model_path}')
         checkpoint = torch.load(model_path, map_location=mk.get_current_device() if device is None else device)
-        self.net.load_state_dict(checkpoint['net_state_dict'], strict=strict)
+        if 'net_state_dict' in checkpoint:
+            net.load_state_dict(checkpoint['net_state_dict'], strict=strict)
+        elif 'model_state_dict' in checkpoint:
+            net.load_state_dict(checkpoint['model_state_dict'], strict=strict)
         if load_opti:
             self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
             self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
