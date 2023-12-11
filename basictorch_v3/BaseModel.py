@@ -62,7 +62,8 @@ class BaseModel(IModel):
         self.loss_function = self.create_loss_function(cfg.loss_function)
         log.info(f"{self.save_name=}")
 
-        self.make_necessary_dirs()
+        if kwargs.get('make_dirs', True):
+            self.make_necessary_dirs()
         self.save_on_metrics(save_on_metrics_name)
         self.evaluate_on_metrics(evaluate_on_metrics_names)
     
@@ -337,13 +338,13 @@ class BaseModel(IModel):
         metrics_groups = {'':{}}
         for name in self.epoch_metrics_dict.keys():
             reduce_fun = self.epoch_metrics_dict[name]['reduce']
-            if isinstance(reduce_fun, list):
-                try:
+            try:
+                if isinstance(reduce_fun, list):
                     reduce_result = reduce(lambda t,f: f(t), reduce_fun, self.epoch_metrics_dict[name]['values'])
-                except:
-                    pdb.set_trace()
-            else:
-                reduce_result = reduce_fun(self.epoch_metrics_dict[name]['values'])
+                else:
+                    reduce_result = reduce_fun(self.epoch_metrics_dict[name]['values'])
+            except:
+                pdb.set_trace()
             if name not in self.history_metrics_dict:
                 self.history_metrics_dict[name] = {
                     'values': [],
