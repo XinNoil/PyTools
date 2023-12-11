@@ -38,6 +38,7 @@ except:
 
 class BaseModel(IModel):
     def __init__(self, cfg, net, logger=None, save_on_metrics_name=["Valid Loss", "Test Error"], evaluate_on_metrics_names=["Valid Loss", "Test Error"], **kwargs):
+        self.cfg = cfg
         self.save_name = cfg.save_name
         self.epoch_stages_interval = getattr(cfg, 'epoch_stages_interval', -1)
         self.net = net
@@ -54,6 +55,7 @@ class BaseModel(IModel):
             log.info(f'Every {self.epoch_stages_interval} Epochs Change Model Output Dir')
         self.model_out_subpath = None
 
+        self.load_premodel(cfg)
         num_params = sum(p.numel() for p in self.net.parameters() if p.requires_grad)
         log.info(f'Total number of parameters: {num_params}')
 
@@ -80,6 +82,14 @@ class BaseModel(IModel):
             return self.trainer.dtype
         else:
             return torch.float32
+    
+    def load_premodel(self, cfg, device=None, strict=True, load_opti=False, net=None):
+        if cfg.get('load_pretrain_model', False):
+            if type(cfg.get('pre_model_path')) == str:
+                pre_model_path = cfg.pre_model_path
+            else:
+                pre_model_path = cfg.pre_model_path[cfg.pre_model_name]
+            self.load(pre_model_path, device=device, strict=strict, load_opti=load_opti, net=net)
 
     def make_necessary_dirs(self):
         os.makedirs("model", exist_ok=True)
@@ -222,12 +232,19 @@ class BaseModel(IModel):
         log.info(f"Selecting Device: {device}")
 
         mk.write("Evaluation:")
+        
+        if cfg.get('load_path', None) is None:
+            model_path = "model"
+        else:
+            model_path = os.path.join(cfg.Path.proj_dir, cfg.Path.output, cfg.get('load_path'), "model")
+        log.info(f"Loading from: {model_path}")
+
         with torch.no_grad():
             if self.epoch_stages_interval<0:
                 for model_name in self.evaluate_list:
-                    model_path = f"model/{model_name}.pt"
-                    if os.path.exists(f"model/{model_name}.pt"):
-                        self.load(model_path, load_opti=False)
+                    model_file = os.path.join(model_path, f"{model_name}.pt")
+                    if os.path.exists(model_file):
+                        self.load(model_file, load_opti=False)
                         self.set_device()
                         self.valid_mode()
                         out_dir = f"evaluation"
@@ -236,17 +253,18 @@ class BaseModel(IModel):
                         for key, val in rst_dict.items():
                             mk.write(f"    {key}: {val}")
             else:
-                for sub_dir in sorted(os.listdir("model")):
-                    if not os.path.isdir(f"model/{sub_dir}"):
+
+                for sub_dir in sorted(os.listdir(model_path)):
+                    if not os.path.isdir(f"{model_path}/{sub_dir}"):
                         continue
                     sub_dir_writed = False
                     for model_name in self.evaluate_list:
-                        model_path = f"model/{sub_dir}/{model_name}.pt"
-                        if os.path.exists(model_path):
+                        model_file = f"{model_path}/{sub_dir}/{model_name}.pt"
+                        if os.path.exists(model_file):
                             if not sub_dir_writed:
                                 mk.write(f"{sub_dir}:")
                                 sub_dir_writed = True
-                            self.load(model_path, load_opti=False)
+                            self.load(model_file, load_opti=False)
                             self.set_device()
                             self.valid_mode()
                             out_dir = f"evaluation/{sub_dir}"
@@ -273,9 +291,14 @@ class BaseModel(IModel):
             'scheduler_state_dict': self.scheduler.state_dict(),
         }, save_path)
 
-    def load(self, model_path, device=None, strict=True, load_opti=True):
+    def load(self, model_path, device=None, strict=True, load_opti=True, net=None):
+        net = self.net if net is None else net
+        log.info(f'load model from: {model_path}')
         checkpoint = torch.load(model_path, map_location=mk.get_current_device() if device is None else device)
-        self.net.load_state_dict(checkpoint['net_state_dict'], strict=strict)
+        if 'net_state_dict' in checkpoint:
+            net.load_state_dict(checkpoint['net_state_dict'], strict=strict)
+        elif 'model_state_dict' in checkpoint:
+            net.load_state_dict(checkpoint['model_state_dict'], strict=strict)
         if load_opti:
             self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
             self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
