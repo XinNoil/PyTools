@@ -8,3 +8,6 @@ def select_df(df, column, value):
         return df[df[column].isin(value)]
     else:
         return df[df[column]==value]
+
+def remove_row(df, name, value):
+    return df[df[name] != value]

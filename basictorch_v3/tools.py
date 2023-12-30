@@ -1,7 +1,7 @@
 import os, time, torch
 from tqdm import tqdm
 import mtools.monkey as mk
-from mtools import read_file, save_json
+from mtools import read_file, save_json, is_cmd, load_cmds, join_cmds
 from torch.utils.data import DataLoader, Dataset
 from hydra.core.hydra_config import HydraConfig
 from time import sleep
@@ -67,32 +67,6 @@ def count_parameters(net):
 def hydra_log_info(log):
     log.info(f"Override Params: {HydraConfig.get().overrides.task}")
     log.info(f"Output Dir: {HydraConfig.get().runtime.output_dir}")
-
-def is_cmd(cmd):
-    return (not cmd.startswith('#')) and len(cmd)
-
-def join_cmds(cmds):
-    cmds = [_.strip().strip('\\') for _ in cmds]
-    cmds = list(filter(is_cmd, cmds))
-    new_cmds = []
-    new_cmd = None
-    for cmd in cmds:
-        if cmd.startswith('python'):
-            if new_cmd is not None:
-                new_cmds.append(new_cmd)
-            new_cmd = cmd
-        else:
-            if new_cmd is None:
-                raise Exception('first line has to startwiths python')
-            new_cmd += cmd
-    if new_cmd is not None:
-        new_cmds.append(new_cmd)
-    return new_cmds
-
-def load_cmds(filename):
-    cmds = read_file(filename)
-    cmds = join_cmds(cmds)
-    return cmds
 
 def list_index(a, v):
     for i,_ in enumerate(a):

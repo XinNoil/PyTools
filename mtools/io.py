@@ -150,3 +150,30 @@ def print_cfg_params(obj, cfg, log):
     for key in cfg.keys():
         if key in obj.__dict__:
             log.info(f"self.{key}={obj.__dict__[key]}")
+
+# cmd
+def is_cmd(cmd):
+    return (not cmd.startswith('#')) and len(cmd)
+
+def join_cmds(cmds):
+    cmds = [_.strip().strip('\\') for _ in cmds]
+    cmds = list(filter(is_cmd, cmds))
+    new_cmds = []
+    new_cmd = None
+    for cmd in cmds:
+        if cmd.startswith('python'):
+            if new_cmd is not None:
+                new_cmds.append(new_cmd)
+            new_cmd = cmd
+        else:
+            if new_cmd is None:
+                raise Exception('first line has to startwiths python')
+            new_cmd += cmd
+    if new_cmd is not None:
+        new_cmds.append(new_cmd)
+    return new_cmds
+
+def load_cmds(filename):
+    cmds = read_file(filename)
+    cmds = join_cmds(cmds)
+    return cmds
