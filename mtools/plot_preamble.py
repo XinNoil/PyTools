@@ -35,7 +35,10 @@ def setfontsize(fontsize):
     matplotlib.rcParams['ytick.labelsize'] = fontsize
     matplotlib.rcParams['legend.fontsize'] = fontsize
 
+fontsize = 18
 setfontsize(18)
+fontdict={'fontweight':'bold'}
+
 colors = sns.color_palette()
 
 def save_fig(g, fig_name):
@@ -59,3 +62,14 @@ def set_g(g, fontsize=18, xlabel='', ylabel='', title='', hidx=[], is_text=False
                     _bar.set_hatch(_hatchs[i]*hatch_num)
     plt.legend()
     g.get_legend().set_title('')
+
+# def set_gs(g, fontsize=16, xlabel='Dataset', ylabel='ADE (cm)'):
+#     g.set_xlabels(xlabel, fontdict=fontdict)
+#     g.set_ylabels(ylabel, fontdict=fontdict)
+#     g.set_titles('')
+#     for i, container in enumerate(g.containers):
+#         # g.bar_label(container, fmt='%.1f', fontsize=fontsize)
+#         for _bar in container:
+#             _bar.set_hatch(hatchs[i]*hatch_num)
+#     plt.legend()
+#     g.get_legend().set_title('')
