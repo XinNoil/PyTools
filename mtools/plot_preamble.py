@@ -37,7 +37,7 @@ def setfontsize(fontsize):
 
 fontsize = 18
 setfontsize(18)
-fontdict={'fontweight':'bold'}
+fontdict={'fontweight':'bold', fontsize:fontsize}
 
 colors = sns.color_palette()
 
@@ -47,9 +47,9 @@ def save_fig(g, fig_name):
 
 def set_g(g, fontsize=18, xlabel='', ylabel='', title='', hidx=[], is_text=False, is_hatch=False, text_fmt='%.1f', bar_label_fontsize=None, hatch_num=1, fontdict={'fontweight':'bold'}, hatchs = ['/', '\\', '|', '-', '+', 'x', '.', 'o', 'O', '*', ''], **kwargs):
     setfontsize(fontsize)
-    g.set_xlabel(xlabel, fontdict=fontdict)
-    g.set_ylabel(ylabel, fontdict=fontdict)
-    g.set_title(title, fontdict=fontdict)
+    g.set_xlabel(xlabel, fontdict=fontdict, fontsize=fontsize)
+    g.set_ylabel(ylabel, fontdict=fontdict, fontsize=fontsize)
+    g.set_title(title, fontdict=fontdict, fontsize=fontsize)
     g.set(**kwargs)
     if is_hatch:
         _hatchs = list_ind(hatchs, hidx) if len(hidx)>0 else hatchs
