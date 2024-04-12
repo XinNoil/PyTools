@@ -30,7 +30,7 @@ class BaseTrainer(ITrainer):
         super().__init__(cfg)
 
         self.model = model
-        self.epoch_num = cfg.epoch_num
+        self.epoch_num = cfg.epoch_num # 120
         self.seed = cfg.seed
 
         self.train_loader = train_loader

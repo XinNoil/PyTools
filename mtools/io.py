@@ -86,16 +86,21 @@ def save_h5(filename, obj, utf=False, mode='w'):
         f[k]=v
     f.close()
 
+def convert_str(v):
+    if type(v) == np.bytes_:
+        return str(np.char.decode(v))
+    elif type(v) == bytes:
+        return v.decode()
+    elif type(v)==np.ndarray and v.dtype.char=='S':
+        return np2str(v)
+    else:
+        return v
+    
 def load_h5(filename):
     f = h5py.File(filename,'r')
     __dict__=dict((k,v[()]) for k,v in zip(f.keys(), f.values()))
     for k,v in zip(__dict__.keys(), __dict__.values()):
-        if type(v) == np.bytes_:
-            __dict__[k] = str(np.char.decode(v))
-        elif type(v) == bytes:
-            __dict__[k] = v.decode()
-        elif type(v)==np.ndarray and v.dtype.char=='S':
-            __dict__[k] = np2str(v)
+        __dict__[k] = convert_str(v)
     f.close()
     return __dict__
 
