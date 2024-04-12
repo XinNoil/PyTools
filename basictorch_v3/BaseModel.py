@@ -204,7 +204,7 @@ class BaseModel(IModel):
 
         for batch_id, batch_data in enumerate(test_loader):
             batch_data = mk.batch_to_device(batch_data)
-            errors = self.test_step(0, batch_id, batch_data)
+            errors = self.test_step(-1, batch_id, batch_data)
             mk.magic_append([errors.reshape(len(errors),-1)], "evaluate_batch_error")
         
         (error_list,) = mk.magic_get("evaluate_batch_error", np.vstack)

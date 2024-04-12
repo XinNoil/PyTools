@@ -7,6 +7,7 @@ from hydra.core.hydra_config import HydraConfig
 from time import sleep
 from git import Repo
 from mtools import get_repo_status
+from omegaconf import OmegaConf,open_dict
 
 def item_losses(losses):
     for loss in losses:
@@ -33,6 +34,9 @@ def data_to_device(batch_data, device=None):
         return batch_data.to(device)
     else:
         return tuple(data_to_device(item, device) for item in batch_data)
+
+def merge_batch(batch):
+    return tuple(torch.cat(tuple(_[i] for _ in batch), dim=0) for i in range(len(batch[0])))
 
 def get_test_dataset(test_dataset, batch_size):
     if issubclass(type(test_dataset), DataLoader):
@@ -168,3 +172,11 @@ def get_git_info(cfg, filename=None):
     if filename is not None:
         save_json(filename, info_list)
     return info_list
+
+def merge_cfg(cfg, _cfg):
+    OmegaConf.set_struct(cfg, True)
+    with open_dict(cfg):
+        for key in _cfg.keys():
+            if key not in cfg:
+                setattr(cfg, key, _cfg[key])
+    return cfg

@@ -51,7 +51,10 @@ def setfontsize(fontsize):
     matplotlib.rcParams['legend.fontsize'] = fontsize
     matplotlib.rcParams['legend.title_fontsize'] = fontsize
 
+fontsize = 18
 setfontsize(18)
+fontdict={'fontweight':'bold', fontsize:fontsize}
+
 colors = sns.color_palette()
 fontsize = 18
 fontdict={"family":"Times New Roman", 'size':fontsize, 'fontweight':'bold'}
@@ -60,11 +63,12 @@ def save_fig(g, fig_name):
     g.figure.savefig(f'{fig_name}.png', bbox_inches='tight')
     g.figure.savefig(f'{fig_name}.pdf', bbox_inches='tight', transparent=True, pad_inches=0)
 
-def set_g(g, fontsize=18, xlabel='', ylabel='', title='', is_text=False, text_fmt='%.1f', bar_label_fontsize=None, fontdict={'fontweight':'bold'}, **kwargs):
+def set_g(g, fontsize=18, xlabel='', ylabel='', title='', hidx=[], is_text=False, is_hatch=False, text_fmt='%.1f', bar_label_fontsize=None, hatch_num=1, fontdict={'fontweight':'bold'}, hatchs = ['/', '\\', '|', '-', '+', 'x', '.', 'o', 'O', '*', ''], **kwargs):
+    setfontsize(fontsize)
     fontdict['fontsize'] = fontsize
-    g.set_xlabel(xlabel, fontdict=fontdict)
-    g.set_ylabel(ylabel, fontdict=fontdict)
-    g.set_title(title, fontdict=fontdict)
+    g.set_xlabel(xlabel, fontdict=fontdict, fontsize=fontsize)
+    g.set_ylabel(ylabel, fontdict=fontdict, fontsize=fontsize)
+    g.set_title(title, fontdict=fontdict, fontsize=fontsize)
     g.set(**kwargs)
     if is_text:
         for i, container in enumerate(g.containers):
@@ -86,3 +90,14 @@ def set_hatch(g, hidx=[], hatch_num=1, hatchs = ['/', '\\', '|', '-', '+', 'x', 
     for i, container in enumerate(g.containers):
         for _bar in container:
             _bar.set_hatch(_hatchs[i]*hatch_num)
+
+# def set_gs(g, fontsize=16, xlabel='Dataset', ylabel='ADE (cm)'):
+#     g.set_xlabels(xlabel, fontdict=fontdict)
+#     g.set_ylabels(ylabel, fontdict=fontdict)
+#     g.set_titles('')
+#     for i, container in enumerate(g.containers):
+#         # g.bar_label(container, fmt='%.1f', fontsize=fontsize)
+#         for _bar in container:
+#             _bar.set_hatch(hatchs[i]*hatch_num)
+#     plt.legend()
+#     g.get_legend().set_title('')
