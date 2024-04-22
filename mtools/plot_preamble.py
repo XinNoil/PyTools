@@ -45,6 +45,10 @@ def save_fig(g, fig_name):
     g.figure.savefig(f'{fig_name}.png', bbox_inches='tight')
     g.figure.savefig(f'{fig_name}.pdf', bbox_inches='tight', transparent=True, pad_inches=0)
 
+def save_pltfig(fig_name):
+    plt.savefig(f'{fig_name}.png', bbox_inches='tight')
+    plt.savefig(f'{fig_name}.pdf', bbox_inches='tight', transparent=True, pad_inches=0)
+
 def set_g(g, fontsize=18, xlabel='', ylabel='', title='', hidx=[], is_text=False, is_hatch=False, text_fmt='%.1f', bar_label_fontsize=None, hatch_num=1, fontdict={'fontweight':'bold'}, hatchs = ['/', '\\', '|', '-', '+', 'x', '.', 'o', 'O', '*', ''], **kwargs):
     setfontsize(fontsize)
     g.set_xlabel(xlabel, fontdict=fontdict, fontsize=fontsize)
@@ -63,13 +67,10 @@ def set_g(g, fontsize=18, xlabel='', ylabel='', title='', hidx=[], is_text=False
     plt.legend()
     g.get_legend().set_title('')
 
-# def set_gs(g, fontsize=16, xlabel='Dataset', ylabel='ADE (cm)'):
-#     g.set_xlabels(xlabel, fontdict=fontdict)
-#     g.set_ylabels(ylabel, fontdict=fontdict)
-#     g.set_titles('')
-#     for i, container in enumerate(g.containers):
-#         # g.bar_label(container, fmt='%.1f', fontsize=fontsize)
-#         for _bar in container:
-#             _bar.set_hatch(hatchs[i]*hatch_num)
-#     plt.legend()
-#     g.get_legend().set_title('')
+def set_gs(g, fontsize=18, xlabel='', ylabel='', title='', fontdict={'fontweight':'bold'}, **kwargs):
+    setfontsize(fontsize)
+    g.set_xlabels(xlabel, fontdict=fontdict)
+    g.set_ylabels(ylabel, fontdict=fontdict)
+    g.set_titles('')
+    g.set(**kwargs)
+    g.legend.set_title('')
