@@ -40,7 +40,7 @@ class BaseModel(IModel):
     def __init__(self, cfg, net, logger=None, save_on_metrics_name=["Valid Loss", "Test Error"], evaluate_on_metrics_names=["Valid Loss", "Test Error"], **kwargs):
         self.cfg = cfg
         self.save_name = cfg.save_name
-        self.epoch_stages_interval = getattr(cfg, 'epoch_stages_interval', -1)
+        self.epoch_stages_interval = cfg.get('epoch_stages_interval', -1)
         self.net = net
         self.logger = logger if logger is not None else Logger([TensorBoardLogger(root_dir='log', name='', version='')])
         self.last_lr = None
@@ -50,7 +50,6 @@ class BaseModel(IModel):
         self.history_metrics_dict = {}
         self.save_on_dict = {}
         self.evaluate_list = []
-
         if self.epoch_stages_interval > 0:
             log.info(f'Every {self.epoch_stages_interval} Epochs Change Model Output Dir')
         self.model_out_subpath = None
@@ -58,7 +57,6 @@ class BaseModel(IModel):
         self.load_premodel(cfg)
         num_params = sum(p.numel() for p in self.net.parameters() if p.requires_grad)
         log.info(f'Total number of parameters: {num_params}')
-
         self.optimizer = self.create_optimizer(cfg.optimizer, self.net)
         self.scheduler = self.create_scheduler(cfg.scheduler, self.optimizer)
         self.loss_function = self.create_loss_function(cfg.loss_function)
@@ -233,12 +231,12 @@ class BaseModel(IModel):
 
         mk.write("Evaluation:")
         
-        if cfg.get('load_path', None) is None:
-            model_path = "model"
-        else:
-            model_path = os.path.join(cfg.Path.proj_dir, cfg.Path.output, cfg.get('load_path'), "model")
+        model_path = "model"
+        if (cfg is not None):
+            if cfg.get('load_path', None) is not None:
+                model_path = os.path.join(cfg.Path.proj_dir, cfg.Path.output, cfg.get('load_path'), "model")
+            
         log.info(f"Loading from: {model_path}")
-
         with torch.no_grad():
             if self.epoch_stages_interval<0:
                 for model_name in self.evaluate_list:

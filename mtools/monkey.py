@@ -32,6 +32,7 @@ class MagicHolder():
         # print(f"Reset: self.holder_dict[{name}] = None") 
 
     def magic_append(self, target, name):
+        # target：要追加的数据列表。name：数据列表对应的键名。
         list_size = len(target)
 
         if name not in self.holder_dict:
