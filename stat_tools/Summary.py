@@ -80,13 +80,13 @@ def get_dataframe(work_dir, prefix, val_loss):
         return None
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument('workdir',              type=str, nargs='+', default=None)
-    parser.add_argument('-l','--workdir_level', type=int, default=0)
-    parser.add_argument('-p','--prefix',        type=str, default=None)
-    parser.add_argument('-o','--outdir',        type=str)
-    parser.add_argument('-v','--val_loss',      type=str, nargs='+', default=['Valid_Loss'])
-    parser.add_argument('-i','--ignore',        type=str2bool, default=False)
+    parser = argparse.ArgumentParser(description="Collect all results of experiments.")
+    parser.add_argument('workdir',              type=str, nargs='+', default=None, help='the list of output dirs, or the father dir of output dirs')
+    parser.add_argument('-l','--workdir_level', type=int, default=0, help='set the level of workdir, 0: output dirs, 1: the father dir of output dirs')
+    parser.add_argument('-p','--prefix',        type=str, default=None, help='the prefix of the output csv, such as the filename of your output csv is {prefix}_eval_{val_loss}_best_des.csv')
+    parser.add_argument('-o','--outdir',        type=str, help='the output dir of the summary csv')
+    parser.add_argument('-v','--val_loss',      type=str, nargs='+', default=['Valid_Loss'], help='the list of monitor loss, the length of the list should be the same as the length of workdir')
+    parser.add_argument('-i','--ignore',        type=str2bool, default=False, help='ignore the error of no item in evaluation dir, please add this option if your program is not finished')
     args = parser.parse_args()
     print(args)
     if args.workdir_level:
