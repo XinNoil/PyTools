@@ -1,9 +1,7 @@
 # -*- coding: UTF-8 -*-
 
 import os, argparse
-import sys
 import ipdb as pdb
-from docopt import docopt
 
 import numpy as np
 np.set_printoptions(precision=4, suppress=True, formatter={'float_kind':'{:f}'.format})
@@ -12,7 +10,7 @@ import pandas as pd
 pd.set_option('display.float_format','{:.4f}'.format)
 
 import mtools.monkey as mk
-from mtools import str2bool
+from mtools import str2bool, list_con
 import os.path as osp
 
 def get_sub_dataframe(exp_run, exp_dir, epoch_dir, prefix, val_loss, epoch):
@@ -84,12 +82,16 @@ def get_dataframe(work_dir, prefix, val_loss):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('workdir',              type=str, nargs='+', default=None)
+    parser.add_argument('-l','--workdir_level', type=int, default=0)
     parser.add_argument('-p','--prefix',        type=str, default=None)
     parser.add_argument('-o','--outdir',        type=str)
     parser.add_argument('-v','--val_loss',      type=str, nargs='+', default=['Valid_Loss'])
     parser.add_argument('-i','--ignore',        type=str2bool, default=False)
     args = parser.parse_args()
-
+    print(args)
+    if args.workdir_level:
+        subworkdirs = list_con([[osp.join(_, __) for __ in os.listdir(_)] for _ in args.workdir])
+        args.workdir = list(filter(osp.isdir, subworkdirs))
     if len(args.val_loss)==1:
         args.val_loss = args.val_loss*len(args.workdir)
     assert len(args.val_loss) == len(args.workdir)

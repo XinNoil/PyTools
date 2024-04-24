@@ -4,15 +4,15 @@ import pandas as pd
 from mtools import str2bool
 import ipdb as pdb
 
-parser = argparse.ArgumentParser()
-parser.add_argument('-p','--summary_path',  type=str)
-parser.add_argument('-n','--name',          type=str, default=None)
-parser.add_argument('-c','--columns',       type=str, nargs='+', default=None)
-parser.add_argument('-nc','--new_columns',  type=str, nargs='+', default=None)
-parser.add_argument('-d','--defaults',      type=str, nargs='+', default=None)
-parser.add_argument('-r','--replaces',      type=str, nargs='+', default=None)
-parser.add_argument('-t','--pivot_table',   type=str, nargs='+', default=None)
-parser.add_argument('--order',              type=str, nargs='+', default=None)
+parser = argparse.ArgumentParser(description="Clean the summary of experiments.")
+parser.add_argument('-p','--summary_path',  type=str, help='the outdir of Summary.py')
+parser.add_argument('-n','--name',          type=str, default=None, help="the postfix name of the output file")
+parser.add_argument('-c','--columns',       type=str, nargs='+', default=None, help="the columns to be output")
+parser.add_argument('-nc','--new_columns',  type=str, nargs='+', default=None, help="the new columns name")
+parser.add_argument('-d','--defaults',      type=str, nargs='+', default=None, help="the default values for the columns")
+parser.add_argument('-r','--replaces',      type=str, nargs='+', default=None, help="the list of replaces for the columns, $new_column$:old_str:new_str, eg., -r method:tmp:, method:dnn:DNN")
+parser.add_argument('-t','--pivot_table',   type=str, nargs='+', default=None, help="the parameters of pivot_table, $value_column$ $columns$, eg., -t Error max_err_limit")
+parser.add_argument('--order',              type=str, nargs='+', default=None, help="sort rows by one column, eg., --order method, you can also specify the order, eg., order method DNN CNN LSTM")
 args = parser.parse_args()
 
 df = pd.read_csv(args.summary_path)
