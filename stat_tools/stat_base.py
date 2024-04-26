@@ -13,6 +13,7 @@ if __name__ == "__main__":
     parser.add_argument('-n','--name',          type=str, default=None, help="extra name to save")
     parser.add_argument('-e','--epoch',         type=str, default=None, help="specify the epoch to save, default is all epochs")
     parser.add_argument('-c','--column',        type=str, default=None, help="unused")
+    parser.add_argument('-s','--scale',         type=float, default=100, help="scale the metric")
     args = parser.parse_args()
     summary_path = args.summary_path
     table_name = '_'+args.name if args.name is not None else ""
@@ -32,8 +33,8 @@ if __name__ == "__main__":
     item_index = df.index.names.index('item')
     df = df.loc[(*[slice(None)]*item_index, args.metric.split(','))]
     # df = df.to_frame()
-    df["mean"] *=100
-    df["std"] *=100
+    df["mean"] *=args.scale
+    df["std"] *=args.scale
 
     epoch = args.epoch
     if epoch is None:

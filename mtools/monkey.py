@@ -215,12 +215,11 @@ def get_class(module_path, class_name):
 
 def eval_dict_values(dict_to_parse):
     params_dict = {}
-    if isinstance(dict_to_parse, dict):
-        for key, value in dict_to_parse.items():
-            try:
-                params_dict[key] = eval(str(value))
-            except:
-                params_dict[key] = value
+    for key, value in dict_to_parse.items():
+        try:
+            params_dict[key] = eval(str(value))
+        except:
+            params_dict[key] = value
     return params_dict
 
 def batch_to_device(batch_data, device=None):

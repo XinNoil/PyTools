@@ -1,6 +1,6 @@
 # -*- coding: UTF-8 -*-
 
-import os, argparse
+import os, argparse, re
 import ipdb as pdb
 
 import numpy as np
@@ -13,17 +13,36 @@ import mtools.monkey as mk
 from mtools import str2bool, list_con
 import os.path as osp
 
-def get_sub_dataframe(exp_run, exp_dir, epoch_dir, prefix, val_loss, epoch):
-    eval_file_path = f"{exp_run}/{exp_dir}/evaluation/{epoch_dir}/{prefix}_eval_{val_loss}_best_des.csv" if prefix is not None else f"{work_dir}/{exp_dir}/evaluation/{epoch_dir}/eval_{val_loss}_best_des.csv"
+def replace_last_comma(string, replacement):
+    parts = string.rsplit(',', maxsplit=1)
+    return replacement.join(parts)
+
+def replace_commas(string):
+    parts = string.split('=')
+    for i in range(1, len(parts)):
+        parts[i] = replace_last_comma(parts[i], ';;;')
+    return '='.join(parts)
+
+def get_sub_dataframe(exp_run, exp_dir, epoch_dir, prefix, postfix, val_loss, epoch):
+    eval_filename = f"eval_{val_loss}_best_des.csv"
+    if prefix is not None:
+        eval_filename = f"{prefix}_{eval_filename}"
+    if postfix is not None:
+        eval_filename = eval_filename.replace("des.csv", f"des_{postfix}.csv")
+    eval_file_path = f"{exp_run}/{exp_dir}/evaluation/{epoch_dir}/{eval_filename}"
     if not osp.exists(eval_file_path):
         print(eval_file_path)
         return
     des_df = pd.read_csv(eval_file_path, index_col=0)
+    if args.transpose:
+        des_df = des_df.T
     des_df.reset_index(inplace=True)
     des_df.rename(columns={'index': "item"}, inplace=True)
     keys = ['exp_run', 'prefix', 'epoch', 'val_metric']
     vals = [exp_run, prefix, epoch, val_loss]
-    for keyeqval in exp_dir.strip().split(","):
+    replaced_string = replace_commas(exp_dir)
+    print(replaced_string)
+    for keyeqval in replaced_string.strip().split(";;;"):
         key = keyeqval.split("=")[0].strip().split(".")[-1].strip()
         val = keyeqval.split("=")[1].strip()
         keys.append(key)
@@ -42,7 +61,7 @@ def get_exp_runs(work_dir, exp_runs=[]):
             exp_runs = get_exp_runs(osp.join(work_dir, path), exp_runs)
     return exp_runs
 
-def get_dataframe(work_dir, prefix, val_loss):
+def get_dataframe(work_dir, prefix, postfix, val_loss):
     # work_dir is Output/<Path.out_dir>
     assert osp.isdir(work_dir)
     exp_runs = get_exp_runs(work_dir, [])
@@ -70,7 +89,7 @@ def get_dataframe(work_dir, prefix, val_loss):
                 epochs = ['default']
             epochs, epoch_dirs = zip(*sorted(zip(epochs, epoch_dirs)))
             for epoch, epoch_dir in zip(epochs, epoch_dirs):
-                df = get_sub_dataframe(exp_run, exp_dir, epoch_dir, prefix, val_loss, epoch)
+                df = get_sub_dataframe(exp_run, exp_dir, epoch_dir, prefix, postfix, val_loss, epoch)
                 if df is not None:
                     mk.magic_append([df], 'sub_dfs')
     merge_df = mk.magic_get('sub_dfs', pd.concat)
@@ -84,9 +103,11 @@ if __name__ == "__main__":
     parser.add_argument('workdir',              type=str, nargs='+', default=None, help='the list of output dirs, or the father dir of output dirs')
     parser.add_argument('-l','--workdir_level', type=int, default=0, help='set the level of workdir, 0: output dirs, 1: the father dir of output dirs')
     parser.add_argument('-p','--prefix',        type=str, default=None, help='the prefix of the output csv, such as the filename of your output csv is {prefix}_eval_{val_loss}_best_des.csv')
+    parser.add_argument('-po','--postfix',        type=str, default=None, help='the prefix of the output csv, such as the filename of your output csv is eval_{val_loss}_best_des_{postfix}.csv')
     parser.add_argument('-o','--outdir',        type=str, help='the output dir of the summary csv')
     parser.add_argument('-v','--val_loss',      type=str, nargs='+', default=['Valid_Loss'], help='the list of monitor loss, the length of the list should be the same as the length of workdir')
     parser.add_argument('-i','--ignore',        type=str2bool, default=False, help='ignore the error of no item in evaluation dir, please add this option if your program is not finished')
+    parser.add_argument('-t','--transpose',       type=str2bool, default=False, help="set trus if you des.csv are columns rather than rows")
     args = parser.parse_args()
     print(args)
     if args.workdir_level:
@@ -96,7 +117,7 @@ if __name__ == "__main__":
         args.val_loss = args.val_loss*len(args.workdir)
     assert len(args.val_loss) == len(args.workdir)
     for work_dir, val_loss in zip(args.workdir, args.val_loss):
-        df = get_dataframe(work_dir, args.prefix, val_loss)
+        df = get_dataframe(work_dir, args.prefix, args.postfix, val_loss)
         # df.to_csv(f"{out_dir}/Summary_{suffix}.csv", index=False, header=True)
         if df is not None:
             mk.magic_append([df], 'dfs')
