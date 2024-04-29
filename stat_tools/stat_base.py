@@ -26,7 +26,7 @@ if __name__ == "__main__":
     if 'seed' in columns:
       columns.remove('seed')
     
-    df = df.groupby(columns)[["mean", 'std']].mean()
+    df = df.groupby(columns)[["mean", 'std', 'count']].mean()
 
     df.to_csv(f"{summary_path}/Summary_grouped.csv")
 
@@ -35,24 +35,28 @@ if __name__ == "__main__":
     # df = df.to_frame()
     df["mean"] *=args.scale
     df["std"] *=args.scale
+    df["count"] *=args.scale
 
     epoch = args.epoch
     if epoch is None:
+      column = "epoch"
       names = list(df.index.names[:item_index])
-      names.remove('epoch')
-      table = pd.pivot_table(df, values="mean", index=names, columns=["epoch"])
-      print(table.to_string())
-      table.to_csv(f"{summary_path}/Summary_table{table_name}.csv", float_format='{:.4f}'.format)
-
-      table = pd.pivot_table(df, values="std", index=names, columns=["epoch"])
-      print(table.to_string())
-      table.to_csv(f"{summary_path}/Summary_table{table_name}_std.csv", float_format='{:.4f}'.format)
     else:
       column = args.column
-      epoch_index = df.index.names.index('epoch')
-      df = df.loc[(*[slice(None)]*epoch_index, epoch)]
+      epoch_index = df.index.names.index("epoch")
+      df = df.loc[(*[slice(None)]*epoch_index, int(epoch))]
       names = list(df.index.names)
-      names.remove(column)
-      table = pd.pivot_table(df, values="mean", index=names, columns=[column])
-      print(table.to_string())
-      table.to_csv(f"{summary_path}/Summary_table{table_name}.csv", float_format='{:.4f}'.format)
+
+names.remove(column)
+
+table = pd.pivot_table(df, values="mean", index=names, columns=[column])
+print(table.to_string())
+table.to_csv(f"{summary_path}/Summary_table{table_name}.csv", float_format='{:.4f}'.format)
+
+table = pd.pivot_table(df, values="std", index=names, columns=[column])
+print(table.to_string())
+table.to_csv(f"{summary_path}/Summary_table{table_name}_std.csv", float_format='{:.4f}'.format)
+
+table = pd.pivot_table(df, values="count", index=names, columns=[column])
+print(table.to_string())
+table.to_csv(f"{summary_path}/Summary_table{table_name}_count.csv", float_format='{:.4f}'.format)

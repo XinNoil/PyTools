@@ -49,6 +49,12 @@ def get_sub_dataframe(exp_run, exp_dir, epoch_dir, prefix, postfix, val_loss, ep
         vals.append(val)
     vals = [[val] for val in vals]
     par_df = pd.DataFrame(dict(zip(keys, vals)))
+    global max_des_index
+    if max_des_index is None:
+        max_des_index = len(des_df.columns)
+    elif max_des_index != len(des_df.columns):
+        max_des_index = max(max_des_index, len(des_df.columns))
+        raise Warning('the length columns of des_df is not the same')
     return pd.merge(par_df, des_df, how='cross')
 
 def get_exp_runs(work_dir, exp_runs=[]):
@@ -109,6 +115,9 @@ if __name__ == "__main__":
     parser.add_argument('-i','--ignore',        type=str2bool, default=False, help='ignore the error of no item in evaluation dir, please add this option if your program is not finished')
     parser.add_argument('-t','--transpose',       type=str2bool, default=False, help="set trus if you des.csv are columns rather than rows")
     args = parser.parse_args()
+
+    max_des_index = None
+
     print(args)
     if args.workdir_level:
         subworkdirs = list_con([[osp.join(_, __) for __ in os.listdir(_)] for _ in args.workdir])
@@ -125,7 +134,7 @@ if __name__ == "__main__":
     if df is not None:
         columns = df.columns.to_list()
         item_index = columns.index('item')
-        columns = columns[:item_index] + columns[item_index+11:] + columns[item_index:item_index+11]
+        columns = columns[:item_index] + columns[item_index+max_des_index:] + columns[item_index:item_index+max_des_index]
         df = df.reindex(columns=columns)
         os.makedirs(args.outdir, exist_ok=True)
         if args.prefix:
