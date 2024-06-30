@@ -74,9 +74,18 @@ def set_g(g, fontsize=18, xlabel='', ylabel='', title='', hidx=[], is_text=False
     g.set_ylabel(ylabel, fontdict=fontdict, fontsize=fontsize)
     g.set_title(title, fontdict=fontdict, fontsize=fontsize)
     g.set(**kwargs)
-    if is_text:
+    if is_hatch:
+        _hatchs = list_ind(hatchs, hidx) if len(hidx)>0 else hatchs
+    if is_hatch or is_text:
         for i, container in enumerate(g.containers):
-            g.bar_label(container, fmt=text_fmt, fontsize=fontsize if bar_label_fontsize is None else bar_label_fontsize)
+            if is_text:
+                g.bar_label(container, fmt=text_fmt, fontsize=fontsize if bar_label_fontsize is None else bar_label_fontsize)
+            if is_hatch:
+                for _bar in container:
+                    _bar.set_hatch(_hatchs[i]*hatch_num)
+    # if is_text:
+    #     for i, container in enumerate(g.containers):
+    #         g.bar_label(container, fmt=text_fmt, fontsize=fontsize if bar_label_fontsize is None else bar_label_fontsize)
     plt.legend()
     g.get_legend().set_title('')
 

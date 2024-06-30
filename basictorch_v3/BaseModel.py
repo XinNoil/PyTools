@@ -345,7 +345,10 @@ class BaseModel(IModel):
                 'save_group': save_group if save_group is not None else ''
             }
         if isinstance(value, torch.Tensor):
-            value = value.item()
+            try:
+                value = value.item()
+            except:
+                pdb.set_trace()
             
         self.epoch_metrics_dict[name]['values'].append(value)
     
